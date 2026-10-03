@@ -56,7 +56,9 @@ On the primary path, the Stop control disappearing is only a completion candidat
 
 ## Title matching
 
-The background worker matches the normalized conversation title against one rule per line. Rules can be wildcard patterns or JavaScript regular expressions.
+The content script first prefers the current conversation's sidebar link as the canonical title, falling back to the browser document title. Titles and patterns are Unicode-normalized (NFKC), zero-width characters are removed, and whitespace is collapsed before matching.
+
+The background worker matches the normalized conversation title against one rule per line. Rules can be wildcard patterns or JavaScript regular expressions. The matched rule and title source are exposed in the popup for diagnostics.
 
 Initial rules enforce numeric suffixes:
 
