@@ -2,7 +2,7 @@
 
 ## Current release
 
-`0.1.3` title-scope hardening and diagnostics.
+`0.1.4` toolbar popup scope management.
 
 ## Source of truth
 
@@ -79,3 +79,18 @@ The user confirmed that newly added scope rules were saved and the ChatGPT page 
 - expose the exact matched rule and title source in the popup.
 
 After deployment, the first check is whether `Test chat` reports `In scope: Yes`, `Matched rule: /^Test chat$/i`, and `Title source: sidebar-current-link` (or `document-title` as fallback).
+
+
+## v0.1.4
+
+Requested workflow improvement:
+
+- clicking the Brave toolbar extension icon should present a real control menu;
+- an out-of-scope named ChatGPT conversation gets a one-click **Monitor this chat** action;
+- the action appends an exact-title regex rule to the existing settings and takes effect immediately;
+- when the exact rule is the active match, the popup offers **Stop monitoring this chat**;
+- if a broader pattern already covers the chat, the popup reports that it is already monitored rather than editing the broader rule;
+- detector diagnostics remain available under a collapsible **Diagnostics** section;
+- popup loading is wrapped defensively so background/content-script lookup failures are visible instead of causing the menu to disappear.
+
+Next validation: reload extension 0.1.4, refresh a ChatGPT tab, click the toolbar icon, and verify the popup appears. On an unrelated named chat, click **Monitor this chat** and verify **In scope** immediately changes to **Yes** without opening Settings.
