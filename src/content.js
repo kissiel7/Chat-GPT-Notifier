@@ -88,6 +88,12 @@
   }
 
   function findStopButton(root = document) {
+    // Prefer stable test-id signals when ChatGPT exposes them.
+    const direct = root.querySelector(
+      'button[data-testid="stop-button"], button[data-testid="composer-stop-button"], button[data-testid*="stop"], [role="button"][data-testid*="stop"]'
+    );
+    if (direct) return direct;
+
     const candidates = Array.from(root.querySelectorAll('button, [role="button"]'));
     let best = null;
 
@@ -280,11 +286,10 @@
         return;
       }
 
-      if (!cycle.sawAssistantActivity) {
-        endCycleWithoutNotification(STATES.IDLE, 'no-assistant-activity');
-        return;
-      }
-
+      // A complete observed Stop-button lifecycle is sufficient evidence that ChatGPT
+      // was generating. Assistant-turn markup changes frequently, so assistant activity
+      // is treated as supporting evidence rather than a hard completion requirement.
+      // Manual Stop and obvious errors are still suppressed above.
       const completedCycle = cycle;
       cycle = null;
       setState(STATES.COMPLETED, 'generation-completed');
