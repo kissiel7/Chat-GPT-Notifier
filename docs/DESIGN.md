@@ -8,6 +8,8 @@ Dropbox `/Projects/ChatGPT-Notifier` is the unpacked deployment mirror and must 
 
 Project changes must be committed to GitHub first and only then mirrored to Dropbox.
 
+**Versioning rule:** every GitHub change mirrored to Dropbox requires an extension version bump, even when the change is documentation-only.
+
 ## Components
 
 ### `src/content.js`
