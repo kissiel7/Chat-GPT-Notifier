@@ -14,11 +14,7 @@ Dropbox: `/Projects/ChatGPT-Notifier`
 
 GitHub is authoritative. Dropbox is only the deployment mirror.
 
-The preferred deployment form is now an unpacked, directly loadable extension at:
-
-`/Projects/ChatGPT-Notifier/current`
-
-Future deployments should update that folder so the user can point Brave/Chrome/Edge directly at it with **Load unpacked** and does not have to extract a ZIP manually. Versioned ZIPs may remain for archive/traceability only.
+The Dropbox project folder itself is the unpacked deployment. Future deployments should update its runtime files in place so Brave/Chrome/Edge can continue pointing directly at `/Projects/ChatGPT-Notifier` with **Load unpacked**, with no manual extraction. Versioned ZIPs may remain for archive/traceability only.
 
 ## Initial monitored chat names
 
@@ -47,7 +43,7 @@ The first live test showed that scope recognition and desktop test notifications
 
 ## Next validation step
 
-Load `/Projects/ChatGPT-Notifier/current` directly in Brave as an unpacked extension and run the scenarios in `docs/TESTING.md`, starting with:
+Load `/Projects/ChatGPT-Notifier` directly in Brave as an unpacked extension and run the scenarios in `docs/TESTING.md`, starting with:
 
 1. Windows test notification.
 2. Out-of-scope conversation response.
