@@ -1,0 +1,10 @@
+:root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+body { margin: 0; min-width: 330px; }
+main { padding: 14px; }
+h1 { font-size: 17px; margin: 0 0 12px; }
+.row { display: grid; grid-template-columns: 90px 1fr; gap: 8px; padding: 6px 0; border-bottom: 1px solid rgba(127,127,127,.25); }
+.row span { opacity: .7; }
+.row strong { overflow-wrap: anywhere; }
+button { width: 100%; margin-top: 12px; padding: 8px 10px; cursor: pointer; }
+.good { color: #17823b; }
+.bad { color: #a12929; }

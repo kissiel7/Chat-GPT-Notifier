@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ChatGPT Notifier settings</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <main>
+    <h1>ChatGPT Notifier</h1>
+
+    <section>
+      <h2>Scope</h2>
+      <label class="check"><input id="enabled" type="checkbox"> Enable notifier</label>
+      <label for="patterns">Conversation-name patterns, one per line</label>
+      <textarea id="patterns" rows="6" spellcheck="false"></textarea>
+      <p class="hint">Use <code>*</code> and <code>?</code> as wildcards, or JavaScript regex syntax such as <code>/^Finanzblick\s+\d+$/i</code>.</p>
+    </section>
+
+    <section>
+      <h2>Windows</h2>
+      <label class="check"><input id="desktopEnabled" type="checkbox"> Show Windows/browser notifications</label>
+      <label class="check"><input id="notifyWhenActive" type="checkbox"> Notify even when the ChatGPT tab is active</label>
+      <button id="testDesktop" type="button">Test Windows notification</button>
+    </section>
+
+    <section>
+      <h2>Mobile via ntfy.sh</h2>
+      <label class="check"><input id="ntfyEnabled" type="checkbox"> Enable ntfy</label>
+      <label for="ntfyTopic">Topic</label>
+      <input id="ntfyTopic" type="text" autocomplete="off" placeholder="use a long random topic name">
+      <label for="ntfyToken">Access token (optional)</label>
+      <input id="ntfyToken" type="password" autocomplete="off" placeholder="tk_...">
+      <label class="check"><input id="ntfyIncludeChatLink" type="checkbox"> Include the ChatGPT conversation link</label>
+      <p class="hint">The extension sends only the chat title, completion time and optionally the conversation URL. It does not send response text.</p>
+      <button id="testNtfy" type="button">Test ntfy notification</button>
+    </section>
+
+    <section>
+      <h2>Detector</h2>
+      <label for="stabilityWindowMs">Completion stability window (ms)</label>
+      <input id="stabilityWindowMs" type="number" min="800" max="10000" step="100">
+    </section>
+
+    <div class="actions">
+      <button id="save" type="button">Save settings</button>
+      <span id="status" role="status"></span>
+    </div>
+  </main>
+  <script src="options.js"></script>
+</body>
+</html>
