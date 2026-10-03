@@ -4,7 +4,7 @@ A small Chromium Manifest V3 extension that notifies you when selected ChatGPT c
 
 ## Current scope
 
-Version `0.1.2` monitors ChatGPT tabs and notifies only when the conversation title matches configured rules. The initial rules are:
+Version `0.1.3` monitors ChatGPT tabs and notifies only when the conversation title matches configured rules. The initial rules are:
 
 - `/^Finanzblick\s+\d+$/i`
 - `/^Documents Storage\s+\d+$/i`
@@ -18,7 +18,7 @@ It supports:
 - Clicking an ntfy notification to open the ChatGPT conversation when link inclusion is enabled.
 - Completion detection based primarily on ChatGPT's composer role flip from send to stop and back, with a submit/assistant-activity fallback and stabilization delay.
 - Suppression after a manual Stop click and on obvious error states.
-- A small popup showing the current chat title, scope and detector state.
+- A small popup showing the current chat title, matched scope rule, title source, and detector/delivery state.
 
 The extension never sends ChatGPT response text to ntfy. It sends the matching chat title, completion timing, and optionally the conversation URL.
 
@@ -80,3 +80,8 @@ The extension requests:
 - host access to ChatGPT and `ntfy.sh` only.
 
 There is no analytics or project backend.
+
+
+## v0.1.3 title-scope hardening
+
+Scope matching now normalizes Unicode (including invisible zero-width characters), prefers the current conversation's sidebar link as the canonical chat name, and exposes the matched rule and title source in the popup. This is intended to avoid cases where the browser tab title looks identical to a configured rule but contains transient or invisible differences.
