@@ -9,6 +9,9 @@ async function load() {
     $('scope').textContent = 'No';
     $('state').textContent = '—';
     $('event').textContent = '—';
+    $('composer').textContent = '—';
+    $('stopSeen').textContent = '—';
+    $('delivery').textContent = '—';
     return;
   }
 
@@ -30,7 +33,10 @@ async function load() {
   $('scope').textContent = status.inScope ? 'Yes' : 'No';
   $('scope').className = status.inScope ? 'good' : 'bad';
   $('state').textContent = contentStatus?.state || status.state || 'idle';
-  $('event').textContent = status.lastEvent || '—';
+  $('event').textContent = contentStatus?.lastEvent || status.lastEvent || '—';
+  $('composer').textContent = contentStatus?.composerRole || '—';
+  $('stopSeen').textContent = contentStatus?.stopSeen ? 'Yes' : (contentStatus?.cycleId ? 'No' : '—');
+  $('delivery').textContent = contentStatus?.lastDelivery || '—';
   $('desktop').textContent = status.settings?.desktopEnabled ? 'On' : 'Off';
   $('ntfy').textContent = status.settings?.ntfyEnabled ? 'On' : 'Off';
 }
