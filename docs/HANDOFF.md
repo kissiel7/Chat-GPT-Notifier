@@ -12,7 +12,13 @@ GitHub: `kissiel7/Chat-GPT-Notifier` (`main`)
 
 Dropbox: `/Projects/ChatGPT-Notifier`
 
-GitHub is authoritative. Dropbox is used only to expose installable ZIP snapshots on the user's computer. `ChatGPT-Notifier-current.zip` should mirror the current GitHub deployment snapshot.
+GitHub is authoritative. Dropbox is only the deployment mirror.
+
+The preferred deployment form is now an unpacked, directly loadable extension at:
+
+`/Projects/ChatGPT-Notifier/current`
+
+Future deployments should update that folder so the user can point Brave/Chrome/Edge directly at it with **Load unpacked** and does not have to extract a ZIP manually. Versioned ZIPs may remain for archive/traceability only.
 
 ## Initial monitored chat names
 
@@ -36,7 +42,7 @@ Implemented as configurable regex rules.
 
 ## Next validation step
 
-Extract `/Projects/ChatGPT-Notifier/ChatGPT-Notifier-current.zip`, load the extracted directory in Brave as an unpacked extension, and run the scenarios in `docs/TESTING.md`, starting with:
+Load `/Projects/ChatGPT-Notifier/current` directly in Brave as an unpacked extension and run the scenarios in `docs/TESTING.md`, starting with:
 
 1. Windows test notification.
 2. Out-of-scope conversation response.
