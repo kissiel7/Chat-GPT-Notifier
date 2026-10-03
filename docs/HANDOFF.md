@@ -2,7 +2,7 @@
 
 ## Current release
 
-`0.1.0` initial implementation.
+`0.1.1` detector compatibility fix.
 
 ## Source of truth
 
@@ -31,6 +31,7 @@ Implemented as configurable regex rules.
 
 - Manifest V3 Chromium extension.
 - Conservative per-tab response-completion detector.
+- v0.1.1: a fully observed Stop-button start/end cycle is sufficient for completion; assistant DOM activity is supporting evidence, not a hard requirement.
 - Manual Stop suppression.
 - Error suppression.
 - Name-based scope filtering.
@@ -39,6 +40,10 @@ Implemented as configurable regex rules.
 - Notification click returns to the originating ChatGPT tab.
 - Popup status UI.
 - Options page and test buttons.
+
+## v0.1.1 troubleshooting conclusion
+
+The first live test showed that scope recognition and desktop test notifications worked, but natural completions produced no notification. The likely failure was the overly strict requirement that assistant-turn DOM markup must visibly change during the same cycle. ChatGPT's current DOM can change independently of that heuristic. v0.1.1 therefore keeps the Stop-button lifecycle, stabilization, manual-Stop suppression and error suppression, while removing assistant-DOM activity as a mandatory completion gate.
 
 ## Next validation step
 
