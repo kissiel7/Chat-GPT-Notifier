@@ -42,7 +42,7 @@ Stores settings in `chrome.storage.local`, including the optional ntfy token. Th
 
 ### Popup
 
-Shows current-tab title, whether it matches the scope rules, detector state, and notification-channel state.
+Acts as the primary quick-control menu. It shows current-tab title and scope state, can add an exact-title rule for the current chat, can remove that exact rule when it is the active match, and keeps detector/delivery diagnostics under a collapsible section. Popup status retrieval is fault-tolerant so a content-script/background lookup failure does not prevent the menu from rendering.
 
 ## Detection state machine
 
