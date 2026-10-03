@@ -5,6 +5,7 @@
   const POLL_MS = 500;
   const MUTATION_DEBOUNCE_MS = 120;
   const MANUAL_STOP_GRACE_MS = 3500;
+  const SUBMIT_FALLBACK_STABILITY_MS = 4000;
 
   const STATES = Object.freeze({
     IDLE: 'idle',
@@ -48,6 +49,8 @@
   let lastStatusSignature = '';
   let stabilityWindowMs = DEFAULT_STABILITY_MS;
   let manualStopUntil = 0;
+  let lastEvent = 'initialized';
+  let lastDelivery = 'none';
 
   function normalize(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -104,6 +107,26 @@
     }
 
     return best?.element || null;
+  }
+
+  function findSendButton(root = document) {
+    return root.querySelector(
+      '#composer-submit-button[data-testid="send-button"], button[data-testid="send-button"], [role="button"][data-testid="send-button"]'
+    );
+  }
+
+  function composerRole(root = document) {
+    const control = root.querySelector('#composer-submit-button')
+      || findStopButton(root)
+      || findSendButton(root);
+    if (!control) return 'missing';
+    const testId = normalize(control.getAttribute('data-testid')).toLowerCase();
+    if (testId.includes('stop')) return 'stop';
+    if (testId.includes('send')) return 'send';
+    const signal = elementSignalText(control);
+    if (STOP_TEXT_TOKENS.some((token) => signal.includes(token))) return 'stop';
+    if (/send|senden|wyslij|wyślij/i.test(signal)) return 'send';
+    return testId || 'other';
   }
 
   function assistantCandidates(root = document) {
@@ -184,6 +207,8 @@
     return {
       at: Date.now(),
       stopPresent: Boolean(stopButton),
+      sendPresent: Boolean(findSendButton()),
+      composerRole: composerRole(),
       assistantFingerprint: assistantFingerprint(assistant),
       assistantPresent: Boolean(assistant),
       errorPresent: detectError(),
@@ -203,6 +228,7 @@
 
   function setState(nextState, reason) {
     state = nextState;
+    lastEvent = reason;
     emitStatus(reason);
   }
 
@@ -215,6 +241,11 @@
       cycleId: cycle?.id || null,
       title: snapshot.title,
       url: snapshot.url,
+      stopPresent: snapshot.stopPresent,
+      sendPresent: snapshot.sendPresent,
+      composerRole: snapshot.composerRole,
+      assistantPresent: snapshot.assistantPresent,
+      lastDelivery,
       timestamp: Date.now()
     };
     const signature = JSON.stringify([payload.state, payload.reason, payload.cycleId, payload.title, payload.url]);
@@ -230,18 +261,21 @@
     }
   }
 
-  function beginCycle(snapshot) {
+  function beginCycle(snapshot, source = 'stop-control') {
     cycleCounter += 1;
     cycle = {
       id: cycleCounter,
       startedAt: Date.now(),
+      source,
+      stopSeen: snapshot.stopPresent,
       initialFingerprint: snapshot.assistantFingerprint,
       lastFingerprint: snapshot.assistantFingerprint,
       sawAssistantActivity: false,
       manualStop: false
     };
+    lastDelivery = 'pending';
     cancelVerification();
-    setState(STATES.ACTIVE, 'generation-started');
+    setState(STATES.ACTIVE, `generation-started:${source}`);
   }
 
   function endCycleWithoutNotification(nextState, reason) {
@@ -300,12 +334,25 @@
         url: snapshot.url,
         durationMs: Date.now() - completedCycle.startedAt,
         timestamp: Date.now()
+      }).then((result) => {
+        if (!result) {
+          lastDelivery = 'no-background-response';
+        } else if (result.ok === false) {
+          lastDelivery = `error:${result.error || result.reason || 'unknown'}`;
+        } else if (result.inScope === false) {
+          lastDelivery = 'out-of-scope';
+        } else if (result.duplicate) {
+          lastDelivery = 'duplicate-suppressed';
+        } else {
+          lastDelivery = result.results?.desktop || 'acknowledged';
+        }
+        emitStatus(`delivery:${lastDelivery}`);
       });
 
       setTimeout(() => {
         if (!cycle) setState(STATES.IDLE, 'completion-settled');
       }, 1800);
-    }, stabilityWindowMs);
+    }, cycle?.stopSeen ? stabilityWindowMs : SUBMIT_FALLBACK_STABILITY_MS);
   }
 
   function evaluate() {
@@ -342,12 +389,13 @@
     }
 
     if (snapshot.stopPresent) {
+      cycle.stopSeen = true;
       cancelVerification();
       if (state !== STATES.ACTIVE) setState(STATES.ACTIVE, 'generation-active');
     } else if (lastSnapshot.stopPresent || state === STATES.ACTIVE) {
       if (cycle.manualStop || Date.now() < manualStopUntil) {
         endCycleWithoutNotification(STATES.MANUAL_STOP, 'manual-stop');
-      } else {
+      } else if (cycle.stopSeen || cycle.sawAssistantActivity) {
         scheduleVerification(snapshot.assistantFingerprint);
       }
     }
@@ -357,10 +405,31 @@
 
   document.addEventListener('click', (event) => {
     const target = event.target instanceof Element ? event.target.closest('button, [role="button"]') : null;
-    if (!target || scoreStopButton(target) < 7) return;
-    manualStopUntil = Date.now() + MANUAL_STOP_GRACE_MS;
-    if (cycle) cycle.manualStop = true;
-    emitStatus('stop-button-clicked');
+    if (!target) return;
+
+    const testId = normalize(target.getAttribute('data-testid')).toLowerCase();
+    const isStop = testId.includes('stop') || scoreStopButton(target) >= 7;
+    const isSend = testId === 'send-button' || target.id === 'composer-submit-button' && testId.includes('send');
+
+    if (isStop) {
+      manualStopUntil = Date.now() + MANUAL_STOP_GRACE_MS;
+      if (cycle) cycle.manualStop = true;
+      lastEvent = 'stop-button-clicked';
+      emitStatus(lastEvent);
+      return;
+    }
+
+    if (isSend && !cycle) {
+      const snapshot = inspect();
+      beginCycle(snapshot, 'send-click');
+    }
+  }, true);
+
+  document.addEventListener('submit', () => {
+    if (!cycle) {
+      const snapshot = inspect();
+      beginCycle(snapshot, 'form-submit');
+    }
   }, true);
 
   const observer = new MutationObserver(() => {
@@ -402,7 +471,13 @@
         title: snapshot.title,
         url: snapshot.url,
         stopPresent: snapshot.stopPresent,
-        assistantPresent: snapshot.assistantPresent
+        sendPresent: snapshot.sendPresent,
+        composerRole: snapshot.composerRole,
+        assistantPresent: snapshot.assistantPresent,
+        lastEvent,
+        lastDelivery,
+        cycleSource: cycle?.source || null,
+        stopSeen: Boolean(cycle?.stopSeen)
       });
     }
   });
