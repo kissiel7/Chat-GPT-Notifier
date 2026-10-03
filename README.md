@@ -16,7 +16,7 @@ It supports:
 - Multiple ChatGPT tabs independently.
 - Clicking a Windows notification to return to the corresponding tab.
 - Clicking an ntfy notification to open the ChatGPT conversation when link inclusion is enabled.
-- Conservative completion detection based on a real Stop-button generation cycle plus assistant-message activity and a stabilization delay.
+- Completion detection based primarily on ChatGPT's composer role flip from send to stop and back, with a submit/assistant-activity fallback and stabilization delay.
 - Suppression after a manual Stop click and on obvious error states.
 - A small popup showing the current chat title, scope and detector state.
 
@@ -58,21 +58,17 @@ Regex rules are useful when the numeric suffix should be enforced.
 
 The detector intentionally prefers an occasional missed notification over false notifications.
 
-A completion notification requires all of the following in the same observed cycle:
+The primary completion path observes ChatGPT's composer control changing to `data-testid="stop-button"`, then returning to a non-stop state, followed by a stable response window (default 1700 ms). A secondary path starts from a send click/form submit and requires assistant activity plus a longer stable window if the stop state was missed.
 
-1. ChatGPT transitions from no Stop button to a Stop button.
-2. The latest assistant response changes during the cycle.
-3. The Stop button disappears.
-4. The assistant response remains stable for the configured stability window (default 1700 ms).
-5. No manual Stop click or obvious error was detected.
-
-Opening an old conversation does not notify because no generation cycle was observed.
+Manual Stop clicks and obvious error states suppress completion notifications. Opening an old conversation does not notify because no new generation cycle was observed.
 
 ## Repository and deployment model
 
 **GitHub `kissiel7/Chat-GPT-Notifier` is authoritative.** Source changes are made and committed there first.
 
-Dropbox `/Projects/ChatGPT-Notifier` is a deployment mirror. The Dropbox project folder itself is kept as the unpacked, directly loadable extension for Chromium's **Load unpacked** command. Versioned ZIP snapshots may also be kept for traceability, but manual extraction should not be required for normal updates. Dropbox copies are not the source of truth.
+Dropbox `/Projects/ChatGPT-Notifier` is the unpacked deployment mirror and is kept directly loadable with Chromium's **Load unpacked** command. Do not create ZIP deployment artifacts; GitHub history provides versioning and traceability. Dropbox is not the source of truth.
+
+**Versioning rule:** every GitHub release state that is mirrored to Dropbox must have a new extension version, including documentation/deployment-only releases.
 
 ## Privacy and permissions
 
