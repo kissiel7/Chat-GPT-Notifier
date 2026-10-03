@@ -53,7 +53,11 @@
   let lastDelivery = 'none';
 
   function normalize(value) {
-    return String(value || '').replace(/\s+/g, ' ').trim();
+    return String(value || '')
+      .normalize('NFKC')
+      .replace(/[\u200B-\u200D\u2060\uFEFF]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 
   function simpleHash(text) {
@@ -195,15 +199,28 @@
     return '';
   }
 
-  function getConversationTitle() {
+  function getConversationTitleInfo() {
+    const sidebarTitle = titleFromCurrentConversationLink();
+    if (sidebarTitle) {
+      return { title: sidebarTitle, source: 'sidebar-current-link' };
+    }
+
     const documentTitle = sanitizeDocumentTitle(document.title);
-    if (documentTitle && documentTitle.toLowerCase() !== 'chatgpt') return documentTitle;
-    return titleFromCurrentConversationLink() || 'ChatGPT';
+    if (documentTitle && documentTitle.toLowerCase() !== 'chatgpt') {
+      return { title: documentTitle, source: 'document-title' };
+    }
+
+    return { title: 'ChatGPT', source: 'fallback' };
+  }
+
+  function getConversationTitle() {
+    return getConversationTitleInfo().title;
   }
 
   function inspect() {
     const stopButton = findStopButton();
     const assistant = latestAssistantTurn();
+    const titleInfo = getConversationTitleInfo();
     return {
       at: Date.now(),
       stopPresent: Boolean(stopButton),
@@ -212,7 +229,9 @@
       assistantFingerprint: assistantFingerprint(assistant),
       assistantPresent: Boolean(assistant),
       errorPresent: detectError(),
-      title: getConversationTitle(),
+      title: titleInfo.title,
+      titleSource: titleInfo.source,
+      rawDocumentTitle: document.title,
       url: location.href
     };
   }
@@ -240,6 +259,8 @@
       reason,
       cycleId: cycle?.id || null,
       title: snapshot.title,
+      titleSource: snapshot.titleSource,
+      rawDocumentTitle: snapshot.rawDocumentTitle,
       url: snapshot.url,
       stopPresent: snapshot.stopPresent,
       sendPresent: snapshot.sendPresent,
@@ -469,6 +490,8 @@
         state,
         cycleId: cycle?.id || null,
         title: snapshot.title,
+        titleSource: snapshot.titleSource,
+        rawDocumentTitle: snapshot.rawDocumentTitle,
         url: snapshot.url,
         stopPresent: snapshot.stopPresent,
         sendPresent: snapshot.sendPresent,
