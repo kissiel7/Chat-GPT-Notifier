@@ -7,6 +7,8 @@ async function load() {
   if (!tab || !/^https:\/\/(chatgpt\.com|chat\.openai\.com)\//i.test(tab.url || '')) {
     $('title').textContent = 'Not a ChatGPT tab';
     $('scope').textContent = 'No';
+    $('matchedRule').textContent = '—';
+    $('titleSource').textContent = '—';
     $('state').textContent = '—';
     $('event').textContent = '—';
     $('composer').textContent = '—';
@@ -32,6 +34,8 @@ async function load() {
   $('title').textContent = status.title || contentStatus?.title || tab.title || 'ChatGPT';
   $('scope').textContent = status.inScope ? 'Yes' : 'No';
   $('scope').className = status.inScope ? 'good' : 'bad';
+  $('matchedRule').textContent = status.matchedRule || '—';
+  $('titleSource').textContent = contentStatus?.titleSource || status.titleSource || '—';
   $('state').textContent = contentStatus?.state || status.state || 'idle';
   $('event').textContent = contentStatus?.lastEvent || status.lastEvent || '—';
   $('composer').textContent = contentStatus?.composerRole || '—';
