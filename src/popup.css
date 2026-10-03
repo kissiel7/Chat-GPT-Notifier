@@ -1,10 +1,18 @@
 :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
-body { margin: 0; min-width: 330px; }
+body { margin: 0; min-width: 360px; }
 main { padding: 14px; }
-h1 { font-size: 17px; margin: 0 0 12px; }
-.row { display: grid; grid-template-columns: 90px 1fr; gap: 8px; padding: 6px 0; border-bottom: 1px solid rgba(127,127,127,.25); }
-.row span { opacity: .7; }
+h1 { font-size: 18px; margin: 0 0 12px; }
+.row { display: grid; grid-template-columns: 96px 1fr; gap: 8px; padding: 6px 0; border-bottom: 1px solid rgba(127,127,127,.25); }
+.row span { opacity: .72; }
 .row strong { overflow-wrap: anywhere; }
-button { width: 100%; margin-top: 12px; padding: 8px 10px; cursor: pointer; }
+button { width: 100%; margin-top: 12px; padding: 9px 10px; cursor: pointer; }
+button:disabled { cursor: default; opacity: .6; }
+.primary { font-weight: 650; }
+.secondary { margin-top: 10px; }
 .good { color: #17823b; }
 .bad { color: #a12929; }
+.status { min-height: 18px; margin-top: 8px; font-size: 12px; opacity: .85; overflow-wrap: anywhere; }
+.status.error { color: #a12929; opacity: 1; }
+details { margin-top: 12px; border-top: 1px solid rgba(127,127,127,.25); padding-top: 10px; }
+summary { cursor: pointer; font-weight: 600; }
+.details-body { margin-top: 6px; }
