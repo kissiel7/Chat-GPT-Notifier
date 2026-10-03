@@ -2,7 +2,7 @@
 
 ## Current release
 
-`0.1.2` detector diagnostics and submit-fallback fix.
+`0.1.3` title-scope hardening and diagnostics.
 
 ## Source of truth
 
@@ -66,3 +66,16 @@ Live v0.1.1 testing still produced no automatic completion notification even tho
 - popup diagnostics for composer role, whether Stop was seen during the active cycle, last detector event, and background delivery acknowledgement.
 
 The next live test should use these diagnostics to distinguish detector failure from notification-delivery failure.
+
+
+## v0.1.3 troubleshooting conclusion
+
+The user confirmed that newly added scope rules were saved and the ChatGPT page was refreshed, but a visibly matching chat title still did not behave as in-scope. The release therefore hardens title handling rather than changing the regex:
+
+- prefer the current conversation sidebar link as the canonical title;
+- fall back to `document.title`;
+- normalize title and rule strings with Unicode NFKC;
+- remove zero-width/invisible characters;
+- expose the exact matched rule and title source in the popup.
+
+After deployment, the first check is whether `Test chat` reports `In scope: Yes`, `Matched rule: /^Test chat$/i`, and `Title source: sidebar-current-link` (or `document-title` as fallback).
