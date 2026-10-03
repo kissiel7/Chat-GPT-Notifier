@@ -2,7 +2,7 @@
 
 ## Current release
 
-`0.1.1` detector compatibility fix.
+`0.1.2` detector diagnostics and submit-fallback fix.
 
 ## Source of truth
 
@@ -13,6 +13,8 @@ GitHub: `kissiel7/Chat-GPT-Notifier` (`main`)
 Dropbox: `/Projects/ChatGPT-Notifier`
 
 GitHub is authoritative. Dropbox is only the deployment mirror.
+
+**Strict versioning rule:** every GitHub change that is mirrored to Dropbox requires a new extension version, including documentation-only or deployment-only changes.
 
 The Dropbox project folder itself is the unpacked deployment. Future deployments should update its runtime files in place so Brave/Chrome/Edge can continue pointing directly at `/Projects/ChatGPT-Notifier` with **Load unpacked**, with no manual extraction. Versioned ZIPs may remain for archive/traceability only.
 
@@ -52,3 +54,15 @@ Load `/Projects/ChatGPT-Notifier` directly in Brave as an unpacked extension and
 5. Manual Stop.
 
 Do not tune selector logic until actual Brave/ChatGPT behavior has been observed and captured.
+
+
+## v0.1.2 troubleshooting conclusion
+
+Live v0.1.1 testing still produced no automatic completion notification even though the extension loaded without errors and the desktop test notification worked. v0.1.2 adds:
+
+- explicit recognition of the current ChatGPT composer role flip between `data-testid="send-button"` and `data-testid="stop-button"`;
+- a send-click/form-submit fallback so a generation cycle can begin even if the stop state is missed;
+- fallback completion only after assistant activity and a longer stability window when no Stop state was observed;
+- popup diagnostics for composer role, whether Stop was seen during the active cycle, last detector event, and background delivery acknowledgement.
+
+The next live test should use these diagnostics to distinguish detector failure from notification-delivery failure.
