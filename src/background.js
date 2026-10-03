@@ -25,7 +25,11 @@ let notificationTargets = {};
 let recentCompletions = {};
 
 function normalize(value) {
-  return String(value || '').replace(/\s+/g, ' ').trim();
+  return String(value || '')
+    .normalize('NFKC')
+    .replace(/[\u200B-\u200D\u2060\uFEFF]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function sanitizeTitle(value) {
@@ -70,9 +74,16 @@ function titleMatchesPattern(title, pattern) {
   }
 }
 
+function matchTitleRule(title, settings) {
+  if (!settings.enabled) return null;
+  for (const pattern of (settings.patterns || [])) {
+    if (titleMatchesPattern(title, pattern)) return pattern;
+  }
+  return null;
+}
+
 function isTitleInScope(title, settings) {
-  if (!settings.enabled) return false;
-  return (settings.patterns || []).some((pattern) => titleMatchesPattern(title, pattern));
+  return Boolean(matchTitleRule(title, settings));
 }
 
 async function getSettings() {
@@ -201,13 +212,17 @@ async function processCompletion(message, sender) {
   recentCompletions[cycleKey] = Date.now();
   await persistSession();
 
-  const inScope = isTitleInScope(title, settings);
+  const matchedRule = matchTitleRule(title, settings);
+  const inScope = Boolean(matchedRule);
   runtimeStates[String(tabId)] = {
     ...(runtimeStates[String(tabId)] || {}),
     state: 'completed',
     title,
     url,
     inScope,
+    matchedRule,
+    titleSource: message.titleSource || null,
+    rawDocumentTitle: message.rawDocumentTitle || null,
     cycleId: message.cycleId,
     lastEvent: 'generation-completed',
     updatedAt: Date.now()
@@ -278,11 +293,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     void (async () => {
       const settings = await getSettings();
       const title = sanitizeTitle(message.title || sender.tab?.title);
+      const matchedRule = matchTitleRule(title, settings);
       runtimeStates[String(tabId)] = {
         state: message.state,
         title,
         url: message.url || sender.tab?.url,
-        inScope: isTitleInScope(title, settings),
+        inScope: Boolean(matchedRule),
+        matchedRule,
+        titleSource: message.titleSource || null,
+        rawDocumentTitle: message.rawDocumentTitle || null,
         cycleId: message.cycleId,
         lastEvent: message.reason,
         updatedAt: message.timestamp || Date.now()
@@ -307,10 +326,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       const settings = await getSettings();
       const stored = runtimeStates[String(tabId)] || {};
       const title = sanitizeTitle(stored.title || message.title);
+      const matchedRule = matchTitleRule(title, settings);
       sendResponse({
         ...stored,
         title,
-        inScope: isTitleInScope(title, settings),
+        inScope: Boolean(matchedRule),
+        matchedRule,
         settings: {
           enabled: settings.enabled,
           desktopEnabled: settings.desktopEnabled,
