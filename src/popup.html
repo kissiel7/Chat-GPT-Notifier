@@ -12,15 +12,22 @@
     <div class="row"><span>Chat</span><strong id="title">—</strong></div>
     <div class="row"><span>In scope</span><strong id="scope">—</strong></div>
     <div class="row"><span>Matched rule</span><strong id="matchedRule">—</strong></div>
-    <div class="row"><span>Title source</span><strong id="titleSource">—</strong></div>
-    <div class="row"><span>State</span><strong id="state">—</strong></div>
-    <div class="row"><span>Last event</span><strong id="event">—</strong></div>
-    <div class="row"><span>Composer</span><strong id="composer">—</strong></div>
-    <div class="row"><span>Stop seen</span><strong id="stopSeen">—</strong></div>
-    <div class="row"><span>Delivery</span><strong id="delivery">—</strong></div>
-    <div class="row"><span>Desktop</span><strong id="desktop">—</strong></div>
-    <div class="row"><span>ntfy</span><strong id="ntfy">—</strong></div>
-    <button id="options" type="button">Settings</button>
+    <button id="toggleScope" class="primary" type="button" disabled>Loading…</button>
+    <div id="actionStatus" class="status" role="status"></div>
+    <details>
+      <summary>Diagnostics</summary>
+      <div class="details-body">
+        <div class="row"><span>Title source</span><strong id="titleSource">—</strong></div>
+        <div class="row"><span>State</span><strong id="state">—</strong></div>
+        <div class="row"><span>Last event</span><strong id="event">—</strong></div>
+        <div class="row"><span>Composer</span><strong id="composer">—</strong></div>
+        <div class="row"><span>Stop seen</span><strong id="stopSeen">—</strong></div>
+        <div class="row"><span>Delivery</span><strong id="delivery">—</strong></div>
+        <div class="row"><span>Desktop</span><strong id="desktop">—</strong></div>
+        <div class="row"><span>ntfy</span><strong id="ntfy">—</strong></div>
+      </div>
+    </details>
+    <button id="options" class="secondary" type="button">Settings</button>
   </main>
   <script src="popup.js"></script>
 </body>
