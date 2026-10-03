@@ -24,11 +24,11 @@ The extension never sends ChatGPT response text to ntfy. It sends the matching c
 
 ## Install in Brave
 
-1. Make the Dropbox distribution folder available locally.
+1. Use the unpacked Dropbox deployment folder at `/Projects/ChatGPT-Notifier/current`.
 2. Open `brave://extensions/`.
 3. Enable **Developer mode**.
 4. Choose **Load unpacked**.
-5. Select the folder containing this `manifest.json` file.
+5. Select the `current` folder containing `manifest.json`.
 6. Open a ChatGPT conversation and click the extension icon to verify its title and scope state.
 7. Open **Settings** from the popup and use **Test Windows notification**.
 
@@ -72,7 +72,7 @@ Opening an old conversation does not notify because no generation cycle was obse
 
 **GitHub `kissiel7/Chat-GPT-Notifier` is authoritative.** Source changes are made and committed there first.
 
-Dropbox `/Projects/ChatGPT-Notifier` is a deployment mirror containing installable ZIP snapshots. `ChatGPT-Notifier-current.zip` is the normal installation artifact; versioned ZIPs provide traceability. Extract the ZIP locally and load the extracted folder as an unpacked extension. Dropbox copies are not the source of truth.
+Dropbox `/Projects/ChatGPT-Notifier` is a deployment mirror. The normal installation target is the unpacked folder `/Projects/ChatGPT-Notifier/current`, kept directly loadable with Chromium's **Load unpacked** command. Versioned ZIP snapshots may also be kept for traceability, but manual extraction should not be required for normal updates. Dropbox copies are not the source of truth.
 
 ## Privacy and permissions
 
