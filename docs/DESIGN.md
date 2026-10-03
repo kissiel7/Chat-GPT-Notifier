@@ -4,7 +4,7 @@
 
 GitHub `kissiel7/Chat-GPT-Notifier` is the master and authoritative repository.
 
-Dropbox `/Projects/ChatGPT-Notifier` is a deployment mirror. The primary deployment target is the unpacked folder `/Projects/ChatGPT-Notifier/current`, which must be kept ready to load directly as an unpacked Chromium extension. Versioned ZIP snapshots may also be retained for traceability, but normal installation and updates must not require the user to unpack files manually.
+Dropbox `/Projects/ChatGPT-Notifier` is the unpacked deployment mirror and must be kept ready to load directly as a Chromium extension. Versioned ZIP snapshots may also be retained for traceability, but normal installation and updates must not require the user to unpack files manually.
 
 Project changes must be committed to GitHub first and only then mirrored to Dropbox.
 
