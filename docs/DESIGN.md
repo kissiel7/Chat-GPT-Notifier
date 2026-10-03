@@ -4,7 +4,7 @@
 
 GitHub `kissiel7/Chat-GPT-Notifier` is the master and authoritative repository.
 
-Dropbox `/Projects/ChatGPT-Notifier` is the unpacked deployment mirror and must be kept ready to load directly as a Chromium extension. Versioned ZIP snapshots may also be retained for traceability, but normal installation and updates must not require the user to unpack files manually.
+Dropbox `/Projects/ChatGPT-Notifier` is the unpacked deployment mirror and must be kept ready to load directly as a Chromium extension. Do not create or retain ZIP deployment artifacts; GitHub is the archive and source of version history.
 
 Project changes must be committed to GitHub first and only then mirrored to Dropbox.
 
@@ -50,9 +50,9 @@ Shows current-tab title, whether it matches the scope rules, detector state, and
 
 Exceptional terminal paths are `manual_stop` and `error`.
 
-A cycle starts only after the extension observes a Stop-button appearance. This prevents old conversations or extension reloads from producing completion notifications.
+A cycle normally starts when the extension observes ChatGPT's composer control enter its stop role. A fallback can start a cycle from a send click/form submit if that role transition is missed.
 
-The Stop button disappearing is only a completion candidate. Completion is confirmed after the assistant fingerprint remains stable for the configured window.
+On the primary path, the Stop control disappearing is only a completion candidate; completion is confirmed after the assistant fingerprint remains stable for the configured window. On the fallback path, assistant activity is mandatory and the stability window is longer.
 
 ## Title matching
 
