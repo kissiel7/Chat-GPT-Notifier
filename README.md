@@ -4,7 +4,7 @@ A small Chromium Manifest V3 extension that notifies you when selected ChatGPT c
 
 ## Current scope
 
-Version `0.1.3` monitors ChatGPT tabs and notifies only when the conversation title matches configured rules. The initial rules are:
+Version `0.1.4` monitors ChatGPT tabs and notifies only when the conversation title matches configured rules. The initial rules are:
 
 - `/^Finanzblick\s+\d+$/i`
 - `/^Documents Storage\s+\d+$/i`
@@ -18,7 +18,7 @@ It supports:
 - Clicking an ntfy notification to open the ChatGPT conversation when link inclusion is enabled.
 - Completion detection based primarily on ChatGPT's composer role flip from send to stop and back, with a submit/assistant-activity fallback and stabilization delay.
 - Suppression after a manual Stop click and on obvious error states.
-- A small popup showing the current chat title, matched scope rule, title source, and detector/delivery state.
+- A toolbar popup with one-click **Monitor this chat** / **Stop monitoring this chat** controls plus collapsible diagnostics.
 
 The extension never sends ChatGPT response text to ntfy. It sends the matching chat title, completion timing, and optionally the conversation URL.
 
@@ -85,3 +85,10 @@ There is no analytics or project backend.
 ## v0.1.3 title-scope hardening
 
 Scope matching now normalizes Unicode (including invisible zero-width characters), prefers the current conversation's sidebar link as the canonical chat name, and exposes the matched rule and title source in the popup. This is intended to avoid cases where the browser tab title looks identical to a configured rule but contains transient or invisible differences.
+
+
+## v0.1.4 toolbar scope control
+
+Clicking the extension icon opens a control popup for the current ChatGPT tab. If the chat is not already covered by a rule, **Monitor this chat** adds an exact-title regex rule for its current canonical name. If that exact rule is responsible for the match, **Stop monitoring this chat** removes it. Chats already covered by a broader rule are shown as already monitored and are not given a misleading per-chat remove action.
+
+The popup loader is defensive: failures to read the content-script or background status are shown inside the popup instead of aborting its UI.
