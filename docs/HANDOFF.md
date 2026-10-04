@@ -2,7 +2,7 @@
 
 ## Current release
 
-`0.1.4` toolbar popup scope management.
+`0.1.5` notification controls and deployment marker.
 
 ## Source of truth
 
@@ -94,3 +94,18 @@ Requested workflow improvement:
 - popup loading is wrapped defensively so background/content-script lookup failures are visible instead of causing the menu to disappear.
 
 Next validation: reload extension 0.1.4, refresh a ChatGPT tab, click the toolbar icon, and verify the popup appears. On an unrelated named chat, click **Monitor this chat** and verify **In scope** immediately changes to **Yes** without opening Settings.
+
+
+## v0.1.5
+
+Operational-hardening release after successful Windows, scope-control and ntfy setup:
+
+- display manifest version in the toolbar popup;
+- display Windows and mobile notification state separately;
+- persist and display the last real completion delivery result for each channel;
+- add **Test Windows** and **Test mobile** buttons directly to the popup;
+- add root `release.json` with release version and source-repository metadata;
+- popup reports deployment `OK` only when `manifest.json` and `release.json` versions match;
+- detector logic is intentionally unchanged from the working v0.1.4 path.
+
+Deployment validation must verify the live Dropbox cloud copies of both `manifest.json` and `release.json`, plus all changed runtime files, before a release is reported complete.
