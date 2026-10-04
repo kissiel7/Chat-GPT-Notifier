@@ -4,7 +4,7 @@ A small Chromium Manifest V3 extension that notifies you when selected ChatGPT c
 
 ## Current scope
 
-Version `0.1.4` monitors ChatGPT tabs and notifies only when the conversation title matches configured rules. The initial rules are:
+Version `0.1.5` monitors ChatGPT tabs and notifies only when the conversation title matches configured rules. The initial rules are:
 
 - `/^Finanzblick\s+\d+$/i`
 - `/^Documents Storage\s+\d+$/i`
@@ -92,3 +92,10 @@ Scope matching now normalizes Unicode (including invisible zero-width characters
 Clicking the extension icon opens a control popup for the current ChatGPT tab. If the chat is not already covered by a rule, **Monitor this chat** adds an exact-title regex rule for its current canonical name. If that exact rule is responsible for the match, **Stop monitoring this chat** removes it. Chats already covered by a broader rule are shown as already monitored and are not given a misleading per-chat remove action.
 
 The popup loader is defensive: failures to read the content-script or background status are shown inside the popup instead of aborting its UI.
+
+
+## v0.1.5 notification and deployment status
+
+The toolbar popup now shows the extension version directly, separates Windows and mobile notification state, exposes the last delivery result for each channel, and provides **Test Windows** and **Test mobile** actions without opening Settings.
+
+A root-level `release.json` marker carries the deployed release version. The popup compares it with the manifest version and reports `Deployment: OK` only when they agree. This is an additional guard against partial or stale Dropbox deployments.
