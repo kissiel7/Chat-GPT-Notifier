@@ -76,6 +76,90 @@ function renderNotificationState(status) {
   $('testNtfy').disabled = !ntfyEnabled;
 }
 
+function monitoredStateLabel(tab) {
+  if (tab.running) return 'generating';
+  if (tab.state === 'completed') return 'completed';
+  if (tab.state === 'manual_stop') return 'stopped';
+  if (tab.state === 'error') return 'error';
+  return tab.state || 'idle';
+}
+
+function renderMonitoredTabs(result) {
+  const tabs = Array.isArray(result?.tabs) ? result.tabs : [];
+  const runningCount = Number(result?.runningCount) || 0;
+  const list = $('monitoredTabs');
+  list.replaceChildren();
+
+  $('runningSummary').textContent = runningCount
+    ? runningCount + ' running · ' + tabs.length + ' open'
+    : tabs.length + ' open';
+
+  if (!tabs.length) {
+    const empty = document.createElement('div');
+    empty.className = 'empty';
+    empty.textContent = 'No monitored ChatGPT tabs are open.';
+    list.appendChild(empty);
+    return;
+  }
+
+  for (const tab of tabs) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'chat-tab' + (tab.tabId === current.tab?.id ? ' current' : '');
+    button.title = 'Switch to ' + tab.title;
+
+    const indicator = document.createElement('span');
+    indicator.className = 'chat-indicator' + (tab.running ? ' running' : '');
+    indicator.textContent = tab.running ? '●' : (tab.state === 'completed' ? '✓' : '○');
+
+    const copy = document.createElement('span');
+    copy.className = 'chat-copy';
+
+    const title = document.createElement('strong');
+    title.className = 'chat-title';
+    title.textContent = tab.title;
+
+    const state = document.createElement('span');
+    state.className = 'chat-state';
+    state.textContent = monitoredStateLabel(tab);
+
+    copy.append(title, state);
+
+    const currentMarker = document.createElement('span');
+    currentMarker.className = 'chat-current';
+    currentMarker.textContent = tab.tabId === current.tab?.id ? 'current' : '';
+
+    button.append(indicator, copy, currentMarker);
+    button.addEventListener('click', async () => {
+      try {
+        const response = await chrome.runtime.sendMessage({ type: 'FOCUS_TAB', tabId: tab.tabId });
+        if (!response?.ok) throw new Error(response?.error || 'Could not focus tab');
+        window.close();
+      } catch (error) {
+        showActionStatus(String(error?.message || error), true);
+      }
+    });
+
+    list.appendChild(button);
+  }
+}
+
+async function loadMonitoredTabs() {
+  try {
+    const response = await chrome.runtime.sendMessage({ type: 'GET_MONITORED_TABS' });
+    if (!response?.ok) throw new Error(response?.error || 'Could not load monitored tabs');
+    renderMonitoredTabs(response);
+  } catch (error) {
+    $('runningSummary').textContent = 'unavailable';
+    const list = $('monitoredTabs');
+    list.replaceChildren();
+    const empty = document.createElement('div');
+    empty.className = 'empty';
+    empty.textContent = 'Dashboard unavailable: ' + String(error?.message || error);
+    list.appendChild(empty);
+  }
+}
+
 async function renderDeploymentState() {
   const manifestVersion = chrome.runtime.getManifest().version;
   $('version').textContent = 'v' + manifestVersion;
@@ -154,6 +238,7 @@ async function load() {
       $('testDesktop').disabled = false;
       $('testNtfy').disabled = true;
       renderScopeButton();
+      await loadMonitoredTabs();
       return;
     }
 
@@ -180,6 +265,7 @@ async function load() {
 
     renderNotificationState(status);
     renderScopeButton();
+    await loadMonitoredTabs();
 
     if (!contentStatus) {
       showActionStatus('Chat detector is not available yet. Refresh the ChatGPT tab after reloading the extension.');
@@ -188,6 +274,7 @@ async function load() {
     showActionStatus('Popup error: ' + String(error?.message || error), true);
     $('toggleScope').disabled = true;
     $('toggleScope').textContent = 'Popup unavailable';
+    await loadMonitoredTabs();
   }
 }
 
@@ -253,3 +340,6 @@ $('options').addEventListener('click', () => {
 });
 
 void load();
+setInterval(() => {
+  void loadMonitoredTabs();
+}, 1200);
