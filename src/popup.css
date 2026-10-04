@@ -1,8 +1,11 @@
 :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
-body { margin: 0; min-width: 360px; }
+body { margin: 0; min-width: 380px; }
 main { padding: 14px; }
-h1 { font-size: 18px; margin: 0 0 12px; }
-.row { display: grid; grid-template-columns: 96px 1fr; gap: 8px; padding: 6px 0; border-bottom: 1px solid rgba(127,127,127,.25); }
+header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+h1 { font-size: 18px; margin: 0; }
+h2 { font-size: 14px; margin: 0 0 6px; }
+.version { font-size: 12px; opacity: .72; white-space: nowrap; }
+.row { display: grid; grid-template-columns: 110px 1fr; gap: 8px; padding: 6px 0; border-bottom: 1px solid rgba(127,127,127,.25); }
 .row span { opacity: .72; }
 .row strong { overflow-wrap: anywhere; }
 button { width: 100%; margin-top: 12px; padding: 9px 10px; cursor: pointer; }
@@ -13,6 +16,9 @@ button:disabled { cursor: default; opacity: .6; }
 .bad { color: #a12929; }
 .status { min-height: 18px; margin-top: 8px; font-size: 12px; opacity: .85; overflow-wrap: anywhere; }
 .status.error { color: #a12929; opacity: 1; }
+.delivery { margin-top: 12px; border-top: 1px solid rgba(127,127,127,.25); padding-top: 10px; }
+.button-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.button-grid button { margin-top: 8px; }
 details { margin-top: 12px; border-top: 1px solid rgba(127,127,127,.25); padding-top: 10px; }
 summary { cursor: pointer; font-weight: 600; }
 .details-body { margin-top: 6px; }
