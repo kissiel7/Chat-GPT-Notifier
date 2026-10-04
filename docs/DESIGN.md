@@ -34,6 +34,8 @@ The Manifest V3 service worker is the policy and delivery layer. It:
 - sends desktop notifications;
 - optionally publishes a minimal event to `ntfy.sh`;
 - maps notification clicks back to the originating tab;
+- maintains an action-badge count for monitored conversations that are currently running;
+- provides a monitored-open-tabs snapshot to the popup and focuses a selected tab on request;
 - stores lightweight runtime status in `chrome.storage.session`.
 
 ### Options page
@@ -42,7 +44,7 @@ Stores settings in `chrome.storage.local`, including the optional ntfy token. Th
 
 ### Popup
 
-Acts as the primary quick-control menu. It shows current-tab title and scope state, can add an exact-title rule for the current chat, can remove that exact rule when it is the active match, shows Windows/mobile notification state and last per-channel delivery results, and provides direct notification test actions. Detector diagnostics stay under a collapsible section. Popup status retrieval is fault-tolerant so a content-script/background lookup failure does not prevent the menu from rendering.
+Acts as the primary quick-control menu. It shows current-tab title and scope state, can add an exact-title rule for the current chat, can remove that exact rule when it is the active match, shows Windows/mobile notification state and last per-channel delivery results, and provides direct notification test actions. It also shows every open in-scope ChatGPT tab, prioritizes running conversations, marks the current tab, and can focus any listed tab. Detector diagnostics stay under a collapsible section. Popup status retrieval is fault-tolerant so a content-script/background lookup failure does not prevent the menu from rendering.
 
 The popup also compares the runtime manifest version with root `release.json`. A mismatch is surfaced as a deployment problem; this marker is intended to catch partial or stale Dropbox deployments.
 
@@ -82,3 +84,8 @@ Assistant response text is intentionally excluded.
 ChatGPT DOM changes can invalidate Stop-button or assistant-turn heuristics. The detector keeps these heuristics in one file and exposes state through the popup to shorten troubleshooting.
 
 A purely DOM-based detector cannot guarantee perfect completion semantics across every ChatGPT experiment or future UI revision. False-positive avoidance is prioritized.
+
+
+## Running-state badge
+
+The extension action badge is derived from background runtime state. Only in-scope tabs in `active` or `verifying` states count as running. The badge is recalculated on detector status changes, scope-setting changes, tab removal, navigation away from ChatGPT, startup, and dashboard refresh.
