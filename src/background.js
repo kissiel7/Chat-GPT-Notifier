@@ -528,6 +528,18 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   })();
 });
 
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (!changeInfo.url) return;
+  if (/^https:\/\/(chatgpt\.com|chat\.openai\.com)\//i.test(changeInfo.url)) return;
+  if (!runtimeStates[String(tabId)]) return;
+
+  delete runtimeStates[String(tabId)];
+  void (async () => {
+    await persistSession();
+    await updateBadge();
+  })();
+});
+
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local' || !changes.settings) return;
   void (async () => {
