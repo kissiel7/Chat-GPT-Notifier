@@ -19,6 +19,7 @@ const MAX_LOGS = 100;
 const RUNTIME_STATES_KEY = 'runtimeStates';
 const NOTIFICATION_TARGETS_KEY = 'notificationTargets';
 const RECENT_COMPLETIONS_KEY = 'recentCompletions';
+const RUNNING_STATES = new Set(['active', 'verifying']);
 
 let runtimeStates = {};
 let notificationTargets = {};
@@ -99,6 +100,93 @@ async function ensureDefaultSettings() {
   }
   const merged = { ...DEFAULT_SETTINGS, ...result.settings };
   await chrome.storage.local.set({ settings: merged });
+}
+
+function isRunningState(state) {
+  return RUNNING_STATES.has(state);
+}
+
+async function updateBadge(settings = null) {
+  const effectiveSettings = settings || await getSettings();
+  let runningCount = 0;
+
+  for (const runtimeState of Object.values(runtimeStates)) {
+    const title = sanitizeTitle(runtimeState.title);
+    const matchedRule = matchTitleRule(title, effectiveSettings);
+    runtimeState.inScope = Boolean(matchedRule);
+    runtimeState.matchedRule = matchedRule;
+    if (runtimeState.inScope && isRunningState(runtimeState.state)) runningCount += 1;
+  }
+
+  await chrome.action.setBadgeText({ text: runningCount ? String(runningCount) : '' });
+  return runningCount;
+}
+
+async function collectMonitoredTabs() {
+  const settings = await getSettings();
+  const tabs = await chrome.tabs.query({
+    url: ['https://chatgpt.com/*', 'https://chat.openai.com/*']
+  });
+
+  const monitored = [];
+
+  for (const tab of tabs) {
+    if (!tab.id) continue;
+
+    let contentStatus = null;
+    try {
+      contentStatus = await chrome.tabs.sendMessage(tab.id, { type: 'GET_CONTENT_STATUS' });
+    } catch (_) {
+      // A tab can briefly lack the content script after an extension reload.
+    }
+
+    const stored = runtimeStates[String(tab.id)] || {};
+    const title = sanitizeTitle(contentStatus?.title || stored.title || tab.title);
+    const matchedRule = matchTitleRule(title, settings);
+    if (!matchedRule) continue;
+
+    const state = contentStatus?.state || stored.state || 'idle';
+    const url = contentStatus?.url || stored.url || tab.url || 'https://chatgpt.com/';
+    const titleSource = contentStatus?.titleSource || stored.titleSource || 'browser-tab';
+    const lastEvent = contentStatus?.lastEvent || stored.lastEvent || null;
+    const lastDelivery = contentStatus?.lastDelivery || stored.lastDelivery || null;
+
+    runtimeStates[String(tab.id)] = {
+      ...stored,
+      state,
+      title,
+      url,
+      inScope: true,
+      matchedRule,
+      titleSource,
+      lastEvent,
+      updatedAt: Date.now()
+    };
+
+    monitored.push({
+      tabId: tab.id,
+      windowId: tab.windowId,
+      title,
+      url,
+      state,
+      running: isRunningState(state),
+      active: Boolean(tab.active),
+      matchedRule,
+      lastEvent,
+      lastDelivery
+    });
+  }
+
+  monitored.sort((a, b) => {
+    if (a.running !== b.running) return a.running ? -1 : 1;
+    if (a.active !== b.active) return a.active ? -1 : 1;
+    return a.title.localeCompare(b.title);
+  });
+
+  await persistSession();
+  const runningCount = await updateBadge(settings);
+
+  return { tabs: monitored, runningCount };
 }
 
 async function addLog(event, details = {}) {
@@ -230,6 +318,7 @@ async function processCompletion(message, sender) {
   await persistSession();
 
   if (!inScope) {
+    await updateBadge(settings);
     await addLog('completion-out-of-scope', { tabId, title, cycleId: message.cycleId });
     return { ok: true, inScope: false };
   }
@@ -268,6 +357,8 @@ async function processCompletion(message, sender) {
     lastDeliveryAt: Date.now()
   };
   await persistSession();
+
+  await updateBadge(settings);
 
   await addLog('completion-notified', {
     tabId,
@@ -315,6 +406,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         updatedAt: message.timestamp || Date.now()
       };
       await persistSession();
+      await updateBadge(settings);
       sendResponse({ ok: true });
     })();
     return true;
@@ -325,6 +417,25 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       await addLog('completion-handler-error', { message: String(error?.message || error) });
       sendResponse({ ok: false, error: String(error?.message || error) });
     });
+    return true;
+  }
+
+  if (message.type === 'GET_MONITORED_TABS') {
+    void collectMonitoredTabs()
+      .then((result) => sendResponse({ ok: true, ...result }))
+      .catch((error) => sendResponse({ ok: false, error: String(error?.message || error) }));
+    return true;
+  }
+
+  if (message.type === 'FOCUS_TAB') {
+    void (async () => {
+      const tabId = Number(message.tabId);
+      if (!Number.isFinite(tabId)) throw new Error('Invalid tab id');
+      const tab = await chrome.tabs.get(tabId);
+      await chrome.tabs.update(tabId, { active: true });
+      await chrome.windows.update(tab.windowId, { focused: true });
+      sendResponse({ ok: true });
+    })().catch((error) => sendResponse({ ok: false, error: String(error?.message || error) }));
     return true;
   }
 
@@ -411,7 +522,23 @@ chrome.notifications.onClicked.addListener((notificationId) => {
 
 chrome.tabs.onRemoved.addListener((tabId) => {
   delete runtimeStates[String(tabId)];
-  void persistSession();
+  void (async () => {
+    await persistSession();
+    await updateBadge();
+  })();
 });
 
-void restoreSession().then(ensureDefaultSettings);
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'local' || !changes.settings) return;
+  void (async () => {
+    const settings = await getSettings();
+    await updateBadge(settings);
+    await persistSession();
+  })();
+});
+
+void (async () => {
+  await restoreSession();
+  await ensureDefaultSettings();
+  await updateBadge();
+})();
