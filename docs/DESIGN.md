@@ -42,7 +42,9 @@ Stores settings in `chrome.storage.local`, including the optional ntfy token. Th
 
 ### Popup
 
-Acts as the primary quick-control menu. It shows current-tab title and scope state, can add an exact-title rule for the current chat, can remove that exact rule when it is the active match, and keeps detector/delivery diagnostics under a collapsible section. Popup status retrieval is fault-tolerant so a content-script/background lookup failure does not prevent the menu from rendering.
+Acts as the primary quick-control menu. It shows current-tab title and scope state, can add an exact-title rule for the current chat, can remove that exact rule when it is the active match, shows Windows/mobile notification state and last per-channel delivery results, and provides direct notification test actions. Detector diagnostics stay under a collapsible section. Popup status retrieval is fault-tolerant so a content-script/background lookup failure does not prevent the menu from rendering.
+
+The popup also compares the runtime manifest version with root `release.json`. A mismatch is surfaced as a deployment problem; this marker is intended to catch partial or stale Dropbox deployments.
 
 ## Detection state machine
 
