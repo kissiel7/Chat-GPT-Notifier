@@ -1,10 +1,10 @@
 :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
-body { margin: 0; min-width: 380px; }
+body { margin: 0; min-width: 400px; }
 main { padding: 14px; }
 header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 h1 { font-size: 18px; margin: 0; }
-h2 { font-size: 14px; margin: 0 0 6px; }
-.version { font-size: 12px; opacity: .72; white-space: nowrap; }
+h2 { font-size: 14px; margin: 0; }
+.version, .section-meta { font-size: 12px; opacity: .72; white-space: nowrap; }
 .row { display: grid; grid-template-columns: 110px 1fr; gap: 8px; padding: 6px 0; border-bottom: 1px solid rgba(127,127,127,.25); }
 .row span { opacity: .72; }
 .row strong { overflow-wrap: anywhere; }
@@ -16,7 +16,19 @@ button:disabled { cursor: default; opacity: .6; }
 .bad { color: #a12929; }
 .status { min-height: 18px; margin-top: 8px; font-size: 12px; opacity: .85; overflow-wrap: anywhere; }
 .status.error { color: #a12929; opacity: 1; }
-.delivery { margin-top: 12px; border-top: 1px solid rgba(127,127,127,.25); padding-top: 10px; }
+.dashboard, .delivery { margin-top: 12px; border-top: 1px solid rgba(127,127,127,.25); padding-top: 10px; }
+.section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.chat-list { display: grid; gap: 6px; max-height: 210px; overflow-y: auto; }
+.chat-tab { display: grid; grid-template-columns: 18px 1fr auto; align-items: center; gap: 8px; margin: 0; padding: 8px; text-align: left; border: 1px solid rgba(127,127,127,.28); border-radius: 8px; background: transparent; }
+.chat-tab:hover { background: rgba(127,127,127,.10); }
+.chat-tab.current { border-style: double; }
+.chat-indicator { font-size: 13px; line-height: 1; }
+.chat-indicator.running { font-weight: 800; }
+.chat-copy { min-width: 0; }
+.chat-title { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-state { display: block; margin-top: 2px; font-size: 11px; opacity: .68; text-transform: capitalize; }
+.chat-current { font-size: 10px; opacity: .65; white-space: nowrap; }
+.empty { padding: 9px 2px; font-size: 12px; opacity: .68; }
 .button-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .button-grid button { margin-top: 8px; }
 details { margin-top: 12px; border-top: 1px solid rgba(127,127,127,.25); padding-top: 10px; }
