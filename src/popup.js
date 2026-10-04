@@ -8,7 +8,8 @@ let current = {
   inScope: false,
   matchedRule: null,
   exactRule: null,
-  isChatGpt: false
+  isChatGpt: false,
+  status: null
 };
 
 function normalize(value) {
@@ -57,6 +58,47 @@ function renderScopeButton() {
   button.textContent = 'Already monitored by a rule';
 }
 
+function renderNotificationState(status) {
+  const desktopEnabled = status?.settings?.desktopEnabled !== false;
+  const ntfyEnabled = Boolean(status?.settings?.ntfyEnabled);
+  const desktopLast = status?.lastDesktopDelivery;
+  const ntfyLast = status?.lastNtfyDelivery;
+
+  $('desktop').textContent = desktopEnabled
+    ? (desktopLast ? 'On · last ' + desktopLast : 'On')
+    : 'Off';
+
+  $('ntfy').textContent = ntfyEnabled
+    ? (ntfyLast ? 'On · last ' + ntfyLast : 'On')
+    : 'Off';
+
+  $('testDesktop').disabled = !desktopEnabled;
+  $('testNtfy').disabled = !ntfyEnabled;
+}
+
+async function renderDeploymentState() {
+  const manifestVersion = chrome.runtime.getManifest().version;
+  $('version').textContent = 'v' + manifestVersion;
+
+  try {
+    const response = await fetch(chrome.runtime.getURL('release.json'), { cache: 'no-store' });
+    if (!response.ok) throw new Error('HTTP ' + response.status);
+    const release = await response.json();
+    const markerVersion = normalize(release.version);
+
+    if (markerVersion === manifestVersion) {
+      $('deployment').textContent = 'OK · ' + markerVersion;
+      $('deployment').className = 'good';
+    } else {
+      $('deployment').textContent = 'MISMATCH · manifest ' + manifestVersion + ' / marker ' + (markerVersion || '?');
+      $('deployment').className = 'bad';
+    }
+  } catch (_) {
+    $('deployment').textContent = 'marker missing';
+    $('deployment').className = 'bad';
+  }
+}
+
 async function getContentStatus(tabId) {
   try {
     return await chrome.tabs.sendMessage(tabId, { type: 'GET_CONTENT_STATUS' });
@@ -79,6 +121,8 @@ async function getBackgroundStatus(tab, contentStatus) {
 }
 
 async function load() {
+  await renderDeploymentState();
+
   try {
     const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
     const tab = tabs[0] || null;
@@ -90,7 +134,8 @@ async function load() {
       inScope: false,
       matchedRule: null,
       exactRule: null,
-      isChatGpt
+      isChatGpt,
+      status: null
     };
 
     if (!isChatGpt) {
@@ -106,12 +151,15 @@ async function load() {
       $('delivery').textContent = '—';
       $('desktop').textContent = '—';
       $('ntfy').textContent = '—';
+      $('testDesktop').disabled = false;
+      $('testNtfy').disabled = true;
       renderScopeButton();
       return;
     }
 
     const contentStatus = await getContentStatus(tab.id);
     const status = await getBackgroundStatus(tab, contentStatus);
+    current.status = status;
 
     const title = normalize(status?.title || contentStatus?.title || tab.title || 'ChatGPT');
     current.title = title;
@@ -129,9 +177,8 @@ async function load() {
     $('composer').textContent = contentStatus?.composerRole || '—';
     $('stopSeen').textContent = contentStatus?.stopSeen ? 'Yes' : (contentStatus?.cycleId ? 'No' : '—');
     $('delivery').textContent = contentStatus?.lastDelivery || '—';
-    $('desktop').textContent = status?.settings?.desktopEnabled === false ? 'Off' : 'On';
-    $('ntfy').textContent = status?.settings?.ntfyEnabled ? 'On' : 'Off';
 
+    renderNotificationState(status);
     renderScopeButton();
 
     if (!contentStatus) {
@@ -178,8 +225,27 @@ async function updateCurrentChatScope() {
   }
 }
 
+async function runNotificationTest(type, successText) {
+  showActionStatus('');
+  try {
+    const response = await chrome.runtime.sendMessage({ type });
+    if (!response?.ok) throw new Error(response?.error || 'Test failed');
+    showActionStatus(successText);
+  } catch (error) {
+    showActionStatus(String(error?.message || error), true);
+  }
+}
+
 $('toggleScope').addEventListener('click', () => {
   void updateCurrentChatScope();
+});
+
+$('testDesktop').addEventListener('click', () => {
+  void runNotificationTest('TEST_DESKTOP', 'Windows test notification sent.');
+});
+
+$('testNtfy').addEventListener('click', () => {
+  void runNotificationTest('TEST_NTFY', 'Mobile test notification sent.');
 });
 
 $('options').addEventListener('click', () => {
