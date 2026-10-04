@@ -261,6 +261,14 @@ async function processCompletion(message, sender) {
     }
   }
 
+  runtimeStates[String(tabId)] = {
+    ...(runtimeStates[String(tabId)] || {}),
+    lastDesktopDelivery: results.desktop,
+    lastNtfyDelivery: results.ntfy,
+    lastDeliveryAt: Date.now()
+  };
+  await persistSession();
+
   await addLog('completion-notified', {
     tabId,
     title,
