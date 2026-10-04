@@ -24,3 +24,14 @@ Run these tests in Brave after every detector change.
 3. Confirm the title matches the configured rule.
 4. If state never reaches `active`, inspect current Stop-button markup.
 5. If it reaches `active` but not `completed`, inspect assistant-message selectors and the stability transition.
+
+
+## v0.1.5 popup and deployment checks
+
+| Scenario | Expected result |
+|---|---|
+| Open toolbar popup | Version shows `v0.1.5` |
+| Popup deployment diagnostic | `Deployment: OK · 0.1.5` |
+| Click **Test Windows** | One Windows/browser test notification |
+| Click **Test mobile** with ntfy enabled | One ntfy mobile test notification |
+| Complete a monitored response | Windows/mobile rows show the latest per-channel delivery result |
