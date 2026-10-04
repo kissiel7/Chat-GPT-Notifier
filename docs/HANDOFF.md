@@ -2,7 +2,7 @@
 
 ## Current release
 
-`0.1.5` notification controls and deployment marker.
+`0.1.6` monitored-tabs dashboard and running-response badge.
 
 ## Source of truth
 
@@ -109,3 +109,18 @@ Operational-hardening release after successful Windows, scope-control and ntfy s
 - detector logic is intentionally unchanged from the working v0.1.4 path.
 
 Deployment validation must verify the live Dropbox cloud copies of both `manifest.json` and `release.json`, plus all changed runtime files, before a release is reported complete.
+
+
+## v0.1.6
+
+Usability release after the core Windows + ntfy workflow was validated:
+
+- popup lists all open ChatGPT tabs whose canonical titles match the configured scope;
+- running tabs are sorted first and the current tab is visibly marked;
+- clicking a dashboard row focuses the corresponding browser tab/window;
+- the toolbar/action badge shows the number of monitored chats in `active` or `verifying` state;
+- badge state is refreshed on detector updates, settings changes, tab close, navigation away from ChatGPT, startup, and dashboard refresh;
+- popup dashboard refreshes approximately every 1.2 seconds while open;
+- detector/completion heuristics are intentionally unchanged.
+
+Validation should include two monitored ChatGPT tabs generating concurrently: the badge should show `2`, the dashboard should list both as generating, clicking either row should focus it, and the badge should decrement as each response finishes.
