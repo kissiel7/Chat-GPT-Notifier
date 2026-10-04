@@ -35,3 +35,19 @@ Run these tests in Brave after every detector change.
 | Click **Test Windows** | One Windows/browser test notification |
 | Click **Test mobile** with ntfy enabled | One ntfy mobile test notification |
 | Complete a monitored response | Windows/mobile rows show the latest per-channel delivery result |
+
+
+## v0.1.6 dashboard and badge checks
+
+| Scenario | Expected result |
+|---|---|
+| Open popup with multiple monitored ChatGPT tabs | Every open in-scope chat appears under **Monitored tabs** |
+| Current monitored tab | Row is marked `current` |
+| Click another monitored-chat row | Corresponding browser tab/window receives focus |
+| One monitored response is generating | Toolbar badge shows `1`; dashboard shows `generating` |
+| Two monitored responses generate concurrently | Toolbar badge shows `2`; both running rows are sorted first |
+| One of two running responses completes | Badge decrements to `1` |
+| All monitored responses complete | Badge clears |
+| Monitored ChatGPT tab is closed or navigates away | It no longer contributes to the badge/dashboard |
+| Popup remains open during generation | Dashboard state refreshes without reopening the popup |
+| Deployment diagnostic | `Deployment: OK · 0.1.6` |
