@@ -86,6 +86,9 @@ function renderNotificationState(status) {
 }
 
 function monitoredStateLabel(tab) {
+  if (tab.detectorAvailable === false || tab.state === 'unavailable') {
+    return 'detector unavailable — refresh tab';
+  }
   if (tab.running) return 'generating';
   if (tab.state === 'completed') return 'completed';
   if (tab.state === 'manual_stop') return 'stopped';
@@ -119,7 +122,9 @@ function renderMonitoredTabs(result) {
 
     const indicator = document.createElement('span');
     indicator.className = 'chat-indicator' + (tab.running ? ' running' : '');
-    indicator.textContent = tab.running ? '●' : (tab.state === 'completed' ? '✓' : '○');
+    indicator.textContent = tab.detectorAvailable === false
+      ? '!'
+      : (tab.running ? '●' : (tab.state === 'completed' ? '✓' : '○'));
 
     const copy = document.createElement('span');
     copy.className = 'chat-copy';
