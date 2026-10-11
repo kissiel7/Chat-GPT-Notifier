@@ -2,7 +2,7 @@
 
 ## Current release
 
-`0.1.6` monitored-tabs dashboard and running-response badge.
+`0.1.7` intermittent-notification diagnostic capture.
 
 ## Source of truth
 
@@ -124,3 +124,21 @@ Usability release after the core Windows + ntfy workflow was validated:
 - detector/completion heuristics are intentionally unchanged.
 
 Validation should include two monitored ChatGPT tabs generating concurrently: the badge should show `2`, the dashboard should list both as generating, clicking either row should focus it, and the badge should decrement as each response finishes.
+
+
+## v0.1.7
+
+Intermittent missed notifications were reported after the core workflow was otherwise working. This release is diagnostic-first: detector timing/decision rules are intentionally not tuned yet.
+
+Added:
+
+- rolling local diagnostic log increased to 300 events;
+- serialized log writes to reduce loss during concurrent tab activity;
+- content-side evidence for composer/Stop transitions, cycle source, state transitions, verification scheduling/reset, first assistant activity, manual Stop, completion handoff/acknowledgement and page unload;
+- background evidence for completion receipt, scope matching, desktop notification creation/error, ntfy delivery and tab navigation;
+- last successful Windows and mobile notification timestamps retained in per-tab runtime state;
+- popup **Copy diagnostics** and **Clear diagnostics** controls;
+- copied report contains version/deployment info, sanitized settings, content/background state and the relevant event timeline;
+- response text, ntfy topic value and ntfy token value are excluded.
+
+When a notification is missed, leave the affected ChatGPT tab open if possible, click the extension icon, expand **Diagnostics**, click **Copy diagnostics**, and paste the complete report into ChatGPT. Do not change detector behavior until at least one missed case has been captured unless a separate deterministic bug is found.
