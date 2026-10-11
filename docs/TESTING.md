@@ -77,3 +77,13 @@ Run these tests in Brave after every detector change.
 
 | Monitored tab cannot be reached by content script | Dashboard shows `detector unavailable — refresh tab`, not `idle` |
 | Refresh an unavailable ChatGPT tab | Dashboard returns to a live detector state and logs detector restoration |
+
+
+## v0.1.8 dashboard responsiveness
+
+| Scenario | Expected result |
+|---|---|
+| One or more ChatGPT tabs have stale/unreachable content scripts | Popup does not remain on `Loading…` indefinitely |
+| Dashboard probe exceeds timeout | Popup shows an explicit dashboard timeout message |
+| Several monitored tabs are open | Status probes complete in parallel and dashboard renders promptly |
+| Unreachable monitored tab | Row reports `detector unavailable — refresh tab` rather than `idle` |
