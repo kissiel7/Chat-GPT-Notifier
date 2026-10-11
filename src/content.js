@@ -51,6 +51,7 @@
   let manualStopUntil = 0;
   let lastEvent = 'initialized';
   let lastDelivery = 'none';
+  let lastDiagnosticSnapshotSignature = '';
 
   function normalize(value) {
     return String(value || '')
@@ -245,9 +246,52 @@
     }
   }
 
+  function diagnostic(event, details = {}) {
+    const titleInfo = getConversationTitleInfo();
+    void safeSend({
+      type: 'DIAGNOSTIC_EVENT',
+      event,
+      title: titleInfo.title,
+      titleSource: titleInfo.source,
+      url: location.href,
+      state,
+      cycleId: cycle?.id || null,
+      details,
+      timestamp: Date.now()
+    });
+  }
+
+  function diagnoseSnapshotTransition(snapshot) {
+    const signature = JSON.stringify([
+      snapshot.composerRole,
+      snapshot.stopPresent,
+      snapshot.sendPresent,
+      snapshot.assistantPresent,
+      snapshot.errorPresent
+    ]);
+    if (signature === lastDiagnosticSnapshotSignature) return;
+    lastDiagnosticSnapshotSignature = signature;
+    diagnostic('snapshot-transition', {
+      composerRole: snapshot.composerRole,
+      stopPresent: snapshot.stopPresent,
+      sendPresent: snapshot.sendPresent,
+      assistantPresent: snapshot.assistantPresent,
+      errorPresent: snapshot.errorPresent
+    });
+  }
+
   function setState(nextState, reason) {
+    const previousState = state;
     state = nextState;
     lastEvent = reason;
+    diagnostic('state-transition', {
+      from: previousState,
+      to: nextState,
+      reason,
+      stopSeen: Boolean(cycle?.stopSeen),
+      sawAssistantActivity: Boolean(cycle?.sawAssistantActivity),
+      manualStop: Boolean(cycle?.manualStop)
+    });
     emitStatus(reason);
   }
 
@@ -296,6 +340,13 @@
     };
     lastDelivery = 'pending';
     cancelVerification();
+    diagnostic('cycle-start', {
+      source,
+      composerRole: snapshot.composerRole,
+      stopPresent: snapshot.stopPresent,
+      sendPresent: snapshot.sendPresent,
+      assistantPresent: snapshot.assistantPresent
+    });
     setState(STATES.ACTIVE, `generation-started:${source}`);
   }
 
@@ -312,6 +363,12 @@
     if (!cycle) return;
     cancelVerification();
     const verifyingCycleId = cycle.id;
+    const verificationDelay = cycle?.stopSeen ? stabilityWindowMs : SUBMIT_FALLBACK_STABILITY_MS;
+    diagnostic('verification-scheduled', {
+      delayMs: verificationDelay,
+      stopSeen: Boolean(cycle?.stopSeen),
+      sawAssistantActivity: Boolean(cycle?.sawAssistantActivity)
+    });
     setState(STATES.VERIFYING, 'completion-candidate');
 
     verificationTimer = setTimeout(() => {
@@ -348,10 +405,17 @@
       const completedCycle = cycle;
       cycle = null;
       setState(STATES.COMPLETED, 'generation-completed');
+      diagnostic('completion-message-sent', {
+        stopSeen: Boolean(completedCycle.stopSeen),
+        sawAssistantActivity: Boolean(completedCycle.sawAssistantActivity),
+        source: completedCycle.source
+      });
       void safeSend({
         type: 'GENERATION_COMPLETE',
         cycleId: completedCycle.id,
         title: snapshot.title,
+        titleSource: snapshot.titleSource,
+        rawDocumentTitle: snapshot.rawDocumentTitle,
         url: snapshot.url,
         durationMs: Date.now() - completedCycle.startedAt,
         timestamp: Date.now()
@@ -367,17 +431,24 @@
         } else {
           lastDelivery = result.results?.desktop || 'acknowledged';
         }
+        diagnostic('completion-ack', {
+          result: lastDelivery,
+          inScope: result?.inScope,
+          desktop: result?.results?.desktop,
+          ntfy: result?.results?.ntfy
+        });
         emitStatus(`delivery:${lastDelivery}`);
       });
 
       setTimeout(() => {
         if (!cycle) setState(STATES.IDLE, 'completion-settled');
       }, 1800);
-    }, cycle?.stopSeen ? stabilityWindowMs : SUBMIT_FALLBACK_STABILITY_MS);
+    }, verificationDelay);
   }
 
   function evaluate() {
     const snapshot = inspect();
+    diagnoseSnapshotTransition(snapshot);
 
     if (!lastSnapshot) {
       lastSnapshot = snapshot;
@@ -400,11 +471,19 @@
     }
 
     if (snapshot.assistantFingerprint !== cycle.lastFingerprint) {
-      if (snapshot.assistantFingerprint !== cycle.initialFingerprint) {
+      if (snapshot.assistantFingerprint !== cycle.initialFingerprint && !cycle.sawAssistantActivity) {
         cycle.sawAssistantActivity = true;
+        diagnostic('assistant-activity-first', {
+          stopSeen: Boolean(cycle.stopSeen),
+          composerRole: snapshot.composerRole
+        });
       }
       cycle.lastFingerprint = snapshot.assistantFingerprint;
       if (state === STATES.VERIFYING && !snapshot.stopPresent) {
+        diagnostic('verification-reset-assistant-change', {
+          stopSeen: Boolean(cycle.stopSeen),
+          composerRole: snapshot.composerRole
+        });
         scheduleVerification(snapshot.assistantFingerprint);
       }
     }
@@ -436,6 +515,10 @@
       manualStopUntil = Date.now() + MANUAL_STOP_GRACE_MS;
       if (cycle) cycle.manualStop = true;
       lastEvent = 'stop-button-clicked';
+      diagnostic('manual-stop-clicked', {
+        composerRole: composerRole(),
+        stopSeen: Boolean(cycle?.stopSeen)
+      });
       emitStatus(lastEvent);
       return;
     }
@@ -452,6 +535,13 @@
       beginCycle(snapshot, 'form-submit');
     }
   }, true);
+
+  window.addEventListener('pagehide', () => {
+    diagnostic('pagehide', {
+      composerRole: composerRole(),
+      stopSeen: Boolean(cycle?.stopSeen)
+    });
+  });
 
   const observer = new MutationObserver(() => {
     if (mutationTimer) clearTimeout(mutationTimer);
