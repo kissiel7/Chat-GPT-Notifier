@@ -102,3 +102,14 @@ Run these tests in Brave after every detector change.
 | Script injection fails | Dashboard reports detector recovery failure; manual refresh remains a fallback |
 | Several stale ChatGPT tabs are open | Recovery attempts run independently and do not duplicate per tab |
 | Deployment diagnostic | `Deployment: OK · 0.1.9` |
+
+
+## v0.1.11 dashboard stability
+
+| Scenario | Expected result |
+|---|---|
+| Many ChatGPT tabs are open but only a few are monitored | Dashboard probes only monitored tabs |
+| Monitored response is generating | Dashboard stays on `generating` and does not flip to timeout |
+| One monitored detector briefly misses a fast status probe | Last known state remains visible while recovery runs asynchronously |
+| Popup remains open for a long response | No overlapping dashboard requests; state refreshes about every 2 seconds |
+| Deployment diagnostic | `Deployment: OK · 0.1.11` |
