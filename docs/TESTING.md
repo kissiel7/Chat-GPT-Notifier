@@ -113,3 +113,14 @@ Run these tests in Brave after every detector change.
 | One monitored detector briefly misses a fast status probe | Last known state remains visible while recovery runs asynchronously |
 | Popup remains open for a long response | No overlapping dashboard requests; state refreshes about every 2 seconds |
 | Deployment diagnostic | `Deployment: OK · 0.1.11` |
+
+
+## v0.1.12 title/scope freshness
+
+| Scenario | Expected result |
+|---|---|
+| Open a named out-of-scope ChatGPT conversation whose initial runtime title was `ChatGPT` | Popup resolves the real title and shows **Monitor this chat** |
+| Click **Monitor this chat** | Exact-title rule is added and popup immediately changes to in-scope |
+| Content title changes from fallback `ChatGPT` to the real conversation name | Background runtime title is updated automatically |
+| Dashboard candidate has stale cached fallback but current browser title is specific | Current specific title is used for scope matching |
+| Deployment diagnostic | `Deployment: OK · 0.1.12` |
