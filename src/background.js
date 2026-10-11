@@ -142,11 +142,28 @@ async function collectMonitoredTabs() {
     }
 
     const stored = runtimeStates[String(tab.id)] || {};
+    const detectorAvailable = Boolean(contentStatus);
     const title = sanitizeTitle(contentStatus?.title || stored.title || tab.title);
     const matchedRule = matchTitleRule(title, settings);
     if (!matchedRule) continue;
 
-    const state = contentStatus?.state || stored.state || 'idle';
+    if (!detectorAvailable && stored.detectorAvailable !== false) {
+      await addLog('content-detector-unavailable', {
+        tabId: tab.id,
+        title,
+        previousState: stored.state || null
+      });
+    } else if (detectorAvailable && stored.detectorAvailable === false) {
+      await addLog('content-detector-restored', {
+        tabId: tab.id,
+        title,
+        state: contentStatus?.state || null
+      });
+    }
+
+    const state = detectorAvailable
+      ? (contentStatus?.state || stored.state || 'idle')
+      : 'unavailable';
     const url = contentStatus?.url || stored.url || tab.url || 'https://chatgpt.com/';
     const titleSource = contentStatus?.titleSource || stored.titleSource || 'browser-tab';
     const lastEvent = contentStatus?.lastEvent || stored.lastEvent || null;
@@ -161,6 +178,7 @@ async function collectMonitoredTabs() {
       matchedRule,
       titleSource,
       lastEvent,
+      detectorAvailable,
       updatedAt: Date.now()
     };
 
@@ -170,7 +188,8 @@ async function collectMonitoredTabs() {
       title,
       url,
       state,
-      running: isRunningState(state),
+      detectorAvailable,
+      running: detectorAvailable && isRunningState(state),
       active: Boolean(tab.active),
       matchedRule,
       lastEvent,
@@ -519,6 +538,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       runtimeStates[String(tabId)] = {
         ...(runtimeStates[String(tabId)] || {}),
         state: message.state,
+        detectorAvailable: true,
         title,
         url: message.url || sender.tab?.url,
         inScope: Boolean(matchedRule),
