@@ -20,6 +20,7 @@ const RUNTIME_STATES_KEY = 'runtimeStates';
 const NOTIFICATION_TARGETS_KEY = 'notificationTargets';
 const RECENT_COMPLETIONS_KEY = 'recentCompletions';
 const RUNNING_STATES = new Set(['active', 'verifying']);
+const CONTENT_STATUS_TIMEOUT_MS = 650;
 
 let runtimeStates = {};
 let notificationTargets = {};
@@ -107,6 +108,32 @@ function isRunningState(state) {
   return RUNNING_STATES.has(state);
 }
 
+async function withTimeout(promise, timeoutMs, fallbackValue = null) {
+  let timer = null;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((resolve) => {
+        timer = setTimeout(() => resolve(fallbackValue), timeoutMs);
+      })
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+async function getContentStatusWithTimeout(tabId) {
+  try {
+    return await withTimeout(
+      chrome.tabs.sendMessage(tabId, { type: 'GET_CONTENT_STATUS' }),
+      CONTENT_STATUS_TIMEOUT_MS,
+      null
+    );
+  } catch (_) {
+    return null;
+  }
+}
+
 async function updateBadge(settings = null) {
   const effectiveSettings = settings || await getSettings();
   let runningCount = 0;
@@ -129,17 +156,17 @@ async function collectMonitoredTabs() {
     url: ['https://chatgpt.com/*', 'https://chat.openai.com/*']
   });
 
+  const tabStatuses = await Promise.all(
+    tabs.map(async (tab) => ({
+      tab,
+      contentStatus: tab.id ? await getContentStatusWithTimeout(tab.id) : null
+    }))
+  );
+
   const monitored = [];
 
-  for (const tab of tabs) {
+  for (const { tab, contentStatus } of tabStatuses) {
     if (!tab.id) continue;
-
-    let contentStatus = null;
-    try {
-      contentStatus = await chrome.tabs.sendMessage(tab.id, { type: 'GET_CONTENT_STATUS' });
-    } catch (_) {
-      // A tab can briefly lack the content script after an extension reload.
-    }
 
     const stored = runtimeStates[String(tab.id)] || {};
     const detectorAvailable = Boolean(contentStatus);
@@ -257,11 +284,7 @@ async function collectDiagnostics(tabId) {
     } catch (_) {
       tab = null;
     }
-    try {
-      contentStatus = await chrome.tabs.sendMessage(numericTabId, { type: 'GET_CONTENT_STATUS' });
-    } catch (_) {
-      contentStatus = null;
-    }
+    contentStatus = await getContentStatusWithTimeout(numericTabId);
   }
 
   let releaseVersion = null;
