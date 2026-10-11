@@ -102,8 +102,9 @@ function renderNotificationState(status) {
 }
 
 function monitoredStateLabel(tab) {
+  if (tab.state === 'recovering') return 'recovering detector…';
   if (tab.detectorAvailable === false || tab.state === 'unavailable') {
-    return 'detector unavailable — refresh tab';
+    return 'detector unavailable — recovery failed';
   }
   if (tab.running) return 'generating';
   if (tab.state === 'completed') return 'completed';
@@ -138,9 +139,11 @@ function renderMonitoredTabs(result) {
 
     const indicator = document.createElement('span');
     indicator.className = 'chat-indicator' + (tab.running ? ' running' : '');
-    indicator.textContent = tab.detectorAvailable === false
-      ? '!'
-      : (tab.running ? '●' : (tab.state === 'completed' ? '✓' : '○'));
+    indicator.textContent = tab.state === 'recovering'
+      ? '↻'
+      : (tab.detectorAvailable === false
+        ? '!'
+        : (tab.running ? '●' : (tab.state === 'completed' ? '✓' : '○')));
 
     const copy = document.createElement('span');
     copy.className = 'chat-copy';
@@ -223,11 +226,19 @@ async function renderDeploymentState() {
 
 async function getContentStatus(tabId) {
   try {
-    return await withTimeout(
+    const direct = await withTimeout(
       chrome.tabs.sendMessage(tabId, { type: 'GET_CONTENT_STATUS' }),
       700,
       null
     );
+    if (direct) return direct;
+
+    const recovery = await withTimeout(
+      chrome.runtime.sendMessage({ type: 'ENSURE_CONTENT_DETECTOR', tabId }),
+      POPUP_MESSAGE_TIMEOUT_MS,
+      null
+    );
+    return recovery?.ok ? recovery.contentStatus : null;
   } catch (_) {
     return null;
   }
@@ -312,7 +323,7 @@ async function load() {
     await loadMonitoredTabs();
 
     if (!contentStatus) {
-      showActionStatus('Chat detector is not available yet. Refresh the ChatGPT tab after reloading the extension.');
+      showActionStatus('Chat detector recovery failed. A manual page refresh remains available as a fallback.', true);
     }
   } catch (error) {
     showActionStatus('Popup error: ' + String(error?.message || error), true);
