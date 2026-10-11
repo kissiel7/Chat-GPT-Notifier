@@ -34,3 +34,6 @@ button:disabled { cursor: default; opacity: .6; }
 details { margin-top: 12px; border-top: 1px solid rgba(127,127,127,.25); padding-top: 10px; }
 summary { cursor: pointer; font-weight: 600; }
 .details-body { margin-top: 6px; }
+
+.diagnostics-actions { margin-top: 8px; }
+.diagnostics-actions button { margin-top: 0; }
