@@ -4,6 +4,8 @@ const $ = (id) => document.getElementById(id);
 
 const POPUP_MESSAGE_TIMEOUT_MS = 1800;
 
+let dashboardLoadInFlight = false;
+
 let current = {
   tab: null,
   title: '',
@@ -178,6 +180,9 @@ function renderMonitoredTabs(result) {
 }
 
 async function loadMonitoredTabs() {
+  if (dashboardLoadInFlight) return;
+  dashboardLoadInFlight = true;
+
   try {
     const response = await withTimeout(
       chrome.runtime.sendMessage({ type: 'GET_MONITORED_TABS' }),
@@ -195,12 +200,13 @@ async function loadMonitoredTabs() {
     empty.className = 'empty';
     const reason = String(error?.message || error);
     empty.textContent = reason === 'Dashboard timed out'
-      ? 'Dashboard timed out. Refresh stale ChatGPT tabs and reopen the popup.'
+      ? 'Dashboard timed out. Detector recovery continues in the background.'
       : 'Dashboard unavailable: ' + reason;
     list.appendChild(empty);
+  } finally {
+    dashboardLoadInFlight = false;
   }
 }
-
 async function renderDeploymentState() {
   const manifestVersion = chrome.runtime.getManifest().version;
   $('version').textContent = 'v' + manifestVersion;
@@ -479,4 +485,4 @@ $('options').addEventListener('click', () => {
 void load();
 setInterval(() => {
   void loadMonitoredTabs();
-}, 1200);
+}, 2000);
