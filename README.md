@@ -4,7 +4,7 @@ A small Chromium Manifest V3 extension that notifies you when selected ChatGPT c
 
 ## Current scope
 
-Version `0.1.11` monitors ChatGPT tabs and notifies only when the conversation title matches configured rules. The initial rules are:
+Version `0.1.12` monitors ChatGPT tabs and notifies only when the conversation title matches configured rules. The initial rules are:
 
 - `/^Finanzblick\s+\d+$/i`
 - `/^Documents Storage\s+\d+$/i`
@@ -162,3 +162,16 @@ The popup dashboard now filters open ChatGPT tabs by monitoring rules before pro
 Dashboard polling is non-overlapping and runs every 2 seconds. If a monitored detector is briefly slow, the popup keeps the last known state and lets detector recovery continue asynchronously rather than replacing the dashboard with a timeout state.
 
 This separates dashboard responsiveness from detector recovery and removes the observed flip between a correct monitored-tab list and a transient `Dashboard timed out` message.
+
+
+## v0.1.12 current-chat title freshness
+
+A newly opened ChatGPT conversation can briefly report the generic title `ChatGPT` before its sidebar/document title settles. The background runtime cache could retain that fallback title even after the content detector knew the real conversation name, which made **Monitor this chat** unavailable or caused scope status to be evaluated against the wrong title.
+
+v0.1.12 fixes title precedence:
+- popup scope controls prefer the live content-script title;
+- background tab status prefers the current requested/live title over stale cached state;
+- runtime state is refreshed when the canonical title changes;
+- dashboard/recovery candidate selection prefers the browser's current specific title over a stale cached fallback.
+
+This is a scope/title-state fix only; detector completion semantics are unchanged.
