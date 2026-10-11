@@ -4,7 +4,7 @@ A small Chromium Manifest V3 extension that notifies you when selected ChatGPT c
 
 ## Current scope
 
-Version `0.1.6` monitors ChatGPT tabs and notifies only when the conversation title matches configured rules. The initial rules are:
+Version `0.1.7` monitors ChatGPT tabs and notifies only when the conversation title matches configured rules. The initial rules are:
 
 - `/^Finanzblick\s+\d+$/i`
 - `/^Documents Storage\s+\d+$/i`
@@ -108,3 +108,14 @@ The toolbar popup now includes a **Monitored tabs** dashboard listing every open
 The extension action badge shows the number of monitored conversations currently in an active or completion-verification state. The badge clears when nothing monitored is running, when a tab closes, or when a ChatGPT tab navigates away. The dashboard refreshes while the popup is open.
 
 The response detector itself is unchanged from the previously validated logic.
+
+
+## v0.1.7 intermittent-notification diagnostics
+
+This release adds diagnostics without intentionally changing the response-completion detector.
+
+The extension keeps a rolling local history of up to 300 diagnostic events. It records lifecycle evidence such as generation-cycle start, composer/Stop-state transitions, state changes, verification scheduling, first assistant activity, manual Stop/error suppression, completion handoff to the background worker, scope matching, and Windows/ntfy delivery outcomes.
+
+The popup diagnostics section now shows the last successful Windows and mobile notification timestamps and adds **Copy diagnostics** and **Clear diagnostics** actions. **Copy diagnostics** produces a text report for the current tab including extension/release versions, non-secret settings, current detector/background state, and the recent event timeline.
+
+The diagnostic report deliberately excludes ChatGPT response text, ntfy topic value, and ntfy token value. It records only whether ntfy topic/token configuration is present.
