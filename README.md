@@ -4,7 +4,7 @@ A small Chromium Manifest V3 extension that notifies you when selected ChatGPT c
 
 ## Current scope
 
-Version `0.1.10` monitors ChatGPT tabs and notifies only when the conversation title matches configured rules. The initial rules are:
+Version `0.1.11` monitors ChatGPT tabs and notifies only when the conversation title matches configured rules. The initial rules are:
 
 - `/^Finanzblick\s+\d+$/i`
 - `/^Documents Storage\s+\d+$/i`
@@ -153,3 +153,12 @@ Diagnostics from a real failure showed that repeated detector recovery attempts 
 The content detector is now a per-tab singleton. A reinjection checks for an already-live detector instance and exits immediately instead of registering another MutationObserver, timer, click/submit handlers, and runtime message listener. A stale detector context from an older extension reload can still be replaced.
 
 The completion heuristics themselves are unchanged.
+
+
+## v0.1.11 stable monitored-tabs dashboard
+
+The popup dashboard now filters open ChatGPT tabs by monitoring rules before probing detector state. It no longer recovery-checks every ChatGPT tab on each refresh.
+
+Dashboard polling is non-overlapping and runs every 2 seconds. If a monitored detector is briefly slow, the popup keeps the last known state and lets detector recovery continue asynchronously rather than replacing the dashboard with a timeout state.
+
+This separates dashboard responsiveness from detector recovery and removes the observed flip between a correct monitored-tab list and a transient `Dashboard timed out` message.
