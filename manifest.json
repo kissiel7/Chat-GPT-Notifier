@@ -1,12 +1,13 @@
 {
   "manifest_version": 3,
   "name": "ChatGPT Notifier",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "Notify when selected ChatGPT conversations finish responding.",
   "permissions": [
     "notifications",
     "storage",
-    "tabs"
+    "tabs",
+    "scripting"
   ],
   "host_permissions": [
     "https://chatgpt.com/*",
