@@ -24,7 +24,7 @@ The extension never sends ChatGPT response text to ntfy. It sends the matching c
 
 ## Install in Brave
 
-1. Use the unpacked Dropbox deployment folder at `/Projects/ChatGPT-Notifier`.
+1. Use the unpacked Dropbox deployment folder at `/Projects/Chrome Extension-ChatGPT Notifier`.
 2. Open `brave://extensions/`.
 3. Enable **Developer mode**.
 4. Choose **Load unpacked**.
@@ -66,7 +66,7 @@ Manual Stop clicks and obvious error states suppress completion notifications. O
 
 **GitHub `kissiel7/Chat-GPT-Notifier` is authoritative.** Source changes are made and committed there first.
 
-Dropbox `/Projects/ChatGPT-Notifier` is the unpacked deployment mirror and is kept directly loadable with Chromium's **Load unpacked** command. Do not create ZIP deployment artifacts; GitHub history provides versioning and traceability. Dropbox is not the source of truth.
+Dropbox `/Projects/Chrome Extension-ChatGPT Notifier` is the unpacked deployment mirror and is kept directly loadable with Chromium's **Load unpacked** command. Do not create ZIP deployment artifacts; GitHub history provides versioning and traceability. Dropbox is not the source of truth.
 
 **Versioning rule:** every GitHub release state that is mirrored to Dropbox must have a new extension version, including documentation/deployment-only releases.
 
