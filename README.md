@@ -119,3 +119,8 @@ The extension keeps a rolling local history of up to 300 diagnostic events. It r
 The popup diagnostics section now shows the last successful Windows and mobile notification timestamps and adds **Copy diagnostics** and **Clear diagnostics** actions. **Copy diagnostics** produces a text report for the current tab including extension/release versions, non-secret settings, current detector/background state, and the recent event timeline.
 
 The diagnostic report deliberately excludes ChatGPT response text, ntfy topic value, and ntfy token value. It records only whether ntfy topic/token configuration is present.
+
+
+### Detector availability in the dashboard
+
+A monitored tab is no longer silently shown as `idle` when the popup cannot reach its content detector. v0.1.7 shows `detector unavailable — refresh tab` instead. This can occur after an unpacked-extension reload while an already-open ChatGPT tab has not itself been refreshed. Such a tab cannot be relied on for completion notifications until its detector is available again.
