@@ -2,6 +2,8 @@
 
 const $ = (id) => document.getElementById(id);
 
+const POPUP_MESSAGE_TIMEOUT_MS = 1800;
+
 let current = {
   tab: null,
   title: '',
@@ -31,6 +33,20 @@ function showActionStatus(text, isError = false) {
   const element = $('actionStatus');
   element.textContent = text || '';
   element.className = isError ? 'status error' : 'status';
+}
+
+async function withTimeout(promise, timeoutMs, fallbackValue = null) {
+  let timer = null;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((resolve) => {
+        timer = setTimeout(() => resolve(fallbackValue), timeoutMs);
+      })
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 function renderScopeButton() {
@@ -160,8 +176,13 @@ function renderMonitoredTabs(result) {
 
 async function loadMonitoredTabs() {
   try {
-    const response = await chrome.runtime.sendMessage({ type: 'GET_MONITORED_TABS' });
-    if (!response?.ok) throw new Error(response?.error || 'Could not load monitored tabs');
+    const response = await withTimeout(
+      chrome.runtime.sendMessage({ type: 'GET_MONITORED_TABS' }),
+      POPUP_MESSAGE_TIMEOUT_MS,
+      null
+    );
+    if (!response) throw new Error('Dashboard timed out');
+    if (!response.ok) throw new Error(response.error || 'Could not load monitored tabs');
     renderMonitoredTabs(response);
   } catch (error) {
     $('runningSummary').textContent = 'unavailable';
@@ -169,7 +190,10 @@ async function loadMonitoredTabs() {
     list.replaceChildren();
     const empty = document.createElement('div');
     empty.className = 'empty';
-    empty.textContent = 'Dashboard unavailable: ' + String(error?.message || error);
+    const reason = String(error?.message || error);
+    empty.textContent = reason === 'Dashboard timed out'
+      ? 'Dashboard timed out. Refresh stale ChatGPT tabs and reopen the popup.'
+      : 'Dashboard unavailable: ' + reason;
     list.appendChild(empty);
   }
 }
@@ -199,7 +223,11 @@ async function renderDeploymentState() {
 
 async function getContentStatus(tabId) {
   try {
-    return await chrome.tabs.sendMessage(tabId, { type: 'GET_CONTENT_STATUS' });
+    return await withTimeout(
+      chrome.tabs.sendMessage(tabId, { type: 'GET_CONTENT_STATUS' }),
+      700,
+      null
+    );
   } catch (_) {
     return null;
   }
