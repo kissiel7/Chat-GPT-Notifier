@@ -89,3 +89,14 @@ A purely DOM-based detector cannot guarantee perfect completion semantics across
 ## Running-state badge
 
 The extension action badge is derived from background runtime state. Only in-scope tabs in `active` or `verifying` states count as running. The badge is recalculated on detector status changes, scope-setting changes, tab removal, navigation away from ChatGPT, startup, and dashboard refresh.
+
+
+## Diagnostic capture
+
+v0.1.7 adds evidence collection around the existing detector rather than changing completion semantics.
+
+The content script emits low-volume diagnostic events only on meaningful transitions: composer/Stop snapshots, cycle start, state transition, verification scheduling/reset, first assistant activity, manual Stop, completion handoff/acknowledgement, and page unload. It never sends assistant/user message text as diagnostic payload.
+
+The background worker serializes diagnostic-log writes to avoid read/modify/write races between multiple tabs and retains the newest 300 records in `chrome.storage.local`. Background events also cover completion receipt, de-duplication, scope outcome, desktop notification creation/error, ntfy delivery, and navigation.
+
+`GET_DIAGNOSTICS` returns a sanitized per-tab report containing runtime state, content status, matching rules, enabled notification channels, and relevant logs. ntfy topic/token values are excluded; only configured/not-configured booleans are exposed.
