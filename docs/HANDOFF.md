@@ -2,7 +2,7 @@
 
 ## Current release
 
-`0.1.8` dashboard responsiveness and diagnostic capture.
+`0.1.9` automatic detector recovery and diagnostic capture.
 
 ## Source of truth
 
@@ -162,3 +162,22 @@ Fix:
 - detector/completion heuristics remain unchanged.
 
 After reloading an unpacked extension, refresh existing ChatGPT tabs once so their content detectors are active.
+
+
+## v0.1.9
+
+The user asked to obtain correct monitored-tab state without manually refreshing ChatGPT tabs after extension reloads.
+
+Implemented:
+
+- added Chromium `scripting` permission;
+- missing content detectors are automatically reinjected into the existing ChatGPT tab;
+- recovery attempts are de-duplicated per tab;
+- proactive recovery scan runs on service-worker start, browser startup/install/update, and completed ChatGPT page loads;
+- popup current-tab lookup can request immediate detector recovery;
+- monitored-tab collection also attempts recovery instead of immediately reporting an unavailable detector;
+- content script initialization detects an already-running response and starts a `recovered-active` cycle when Stop/generating state is present;
+- dashboard can show `recovering detector…` and explicit recovery failure;
+- manual page refresh is now a fallback rather than the normal recovery procedure.
+
+Important semantic boundary: if the detector was absent for the entire response and recovery occurs only after the response finished, no retroactive completion is emitted. That avoids false notifications for old conversation state.
