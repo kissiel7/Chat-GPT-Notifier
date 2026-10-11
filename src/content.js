@@ -1,6 +1,36 @@
 (() => {
   'use strict';
 
+  const SINGLETON_KEY = '__chatgptNotifierDetectorSingleton_v1';
+  const existingDetector = globalThis[SINGLETON_KEY];
+
+  try {
+    if (existingDetector?.isAlive?.()) {
+      existingDetector.touch?.();
+      return;
+    }
+    existingDetector?.dispose?.();
+  } catch (_) {
+    // Replace a stale detector context after an extension reload.
+  }
+
+  const instanceToken = String(Date.now());
+  let detectorDisposed = false;
+  globalThis[SINGLETON_KEY] = {
+    instanceToken,
+    isAlive() {
+      try {
+        return !detectorDisposed && Boolean(chrome.runtime?.id);
+      } catch (_) {
+        return false;
+      }
+    },
+    touch() {},
+    dispose() {
+      detectorDisposed = true;
+    }
+  };
+
   const DEFAULT_STABILITY_MS = 1700;
   const POLL_MS = 500;
   const MUTATION_DEBOUNCE_MS = 120;
@@ -250,6 +280,7 @@
     const titleInfo = getConversationTitleInfo();
     void safeSend({
       type: 'DIAGNOSTIC_EVENT',
+      instanceToken,
       event,
       title: titleInfo.title,
       titleSource: titleInfo.source,
@@ -299,6 +330,7 @@
     const snapshot = inspect();
     const payload = {
       type: 'STATUS_UPDATE',
+      instanceToken,
       state,
       reason,
       cycleId: cycle?.id || null,
@@ -412,7 +444,9 @@
       });
       void safeSend({
         type: 'GENERATION_COMPLETE',
+        instanceToken,
         cycleId: completedCycle.id,
+        cycleSource: completedCycle.source,
         title: snapshot.title,
         titleSource: snapshot.titleSource,
         rawDocumentTitle: snapshot.rawDocumentTitle,
@@ -541,6 +575,7 @@
   }, true);
 
   window.addEventListener('pagehide', () => {
+    detectorDisposed = true;
     diagnostic('pagehide', {
       composerRole: composerRole(),
       stopSeen: Boolean(cycle?.stopSeen)
@@ -581,6 +616,7 @@
     if (message?.type === 'GET_CONTENT_STATUS') {
       const snapshot = inspect();
       sendResponse({
+        instanceToken,
         state,
         cycleId: cycle?.id || null,
         title: snapshot.title,
