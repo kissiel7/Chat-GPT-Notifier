@@ -494,6 +494,10 @@
       return;
     }
 
+    if (snapshot.title !== lastSnapshot.title) {
+      emitStatus('title-changed');
+    }
+
     if (!cycle) {
       if (!lastSnapshot.stopPresent && snapshot.stopPresent) {
         beginCycle(snapshot);
