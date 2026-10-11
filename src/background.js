@@ -43,6 +43,15 @@ function sanitizeTitle(value) {
   return title || 'ChatGPT';
 }
 
+function preferredTitle(...values) {
+  for (const value of values) {
+    if (!normalize(value)) continue;
+    const title = sanitizeTitle(value);
+    if (title.toLowerCase() !== 'chatgpt') return title;
+  }
+  return 'ChatGPT';
+}
+
 function wildcardRegex(pattern) {
   const escaped = pattern
     .replace(/[.+^${}()|[\]\\]/g, '\\$&')
@@ -240,7 +249,7 @@ async function recoverAllChatGptDetectors(reason = 'startup') {
 
   const candidates = tabs.filter((tab) => {
     const stored = runtimeStates[String(tab.id)] || {};
-    const title = sanitizeTitle(stored.title || tab.title);
+    const title = preferredTitle(tab.title, stored.title);
     return Boolean(matchTitleRule(title, settings));
   });
 
@@ -280,7 +289,7 @@ async function collectMonitoredTabs() {
     .filter((tab) => tab.id)
     .map((tab) => {
       const stored = runtimeStates[String(tab.id)] || {};
-      const title = sanitizeTitle(stored.title || tab.title);
+      const title = preferredTitle(tab.title, stored.title);
       return {
         tab,
         stored,
@@ -773,10 +782,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       const tabId = message.tabId;
       const settings = await getSettings();
       const stored = runtimeStates[String(tabId)] || {};
-      const title = sanitizeTitle(stored.title || message.title);
+      const title = preferredTitle(message.title, stored.title);
       const matchedRule = matchTitleRule(title, settings);
+
+      if (title !== stored.title) {
+        runtimeStates[String(tabId)] = {
+          ...stored,
+          title,
+          updatedAt: Date.now()
+        };
+        await persistSession();
+      }
+
       sendResponse({
-        ...stored,
+        ...runtimeStates[String(tabId)],
         title,
         inScope: Boolean(matchedRule),
         matchedRule,
