@@ -2,7 +2,7 @@
 
 ## Current release
 
-`0.1.9` automatic detector recovery and diagnostic capture.
+`0.1.11` stable monitored-tab dashboard with detector recovery.
 
 ## Source of truth
 
@@ -181,3 +181,19 @@ Implemented:
 - manual page refresh is now a fallback rather than the normal recovery procedure.
 
 Important semantic boundary: if the detector was absent for the entire response and recovery occurs only after the response finished, no retroactive completion is emitted. That avoids false notifications for old conversation state.
+
+
+## v0.1.11
+
+A live popup showed alternating states: a valid monitored-tab view followed by `Dashboard timed out`. Diagnostics showed 13 ChatGPT tabs but only 2 monitored tabs.
+
+Fix:
+- filter by scope before detector probing;
+- dashboard probes only monitored tabs;
+- a missed quick probe reuses cached runtime state and starts recovery asynchronously;
+- dashboard refreshes cannot overlap;
+- refresh interval increased from 1.2 s to 2 s;
+- proactive recovery scans now target monitored tabs only;
+- detector/completion semantics remain unchanged.
+
+Expected result: while a monitored response runs, the popup should remain stable at `generating` instead of alternating with timeout messages.
