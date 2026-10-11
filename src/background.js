@@ -15,7 +15,7 @@ const DEFAULT_SETTINGS = Object.freeze({
   stabilityWindowMs: 1700
 });
 
-const MAX_LOGS = 100;
+const MAX_LOGS = 300;
 const RUNTIME_STATES_KEY = 'runtimeStates';
 const NOTIFICATION_TARGETS_KEY = 'notificationTargets';
 const RECENT_COMPLETIONS_KEY = 'recentCompletions';
@@ -24,6 +24,7 @@ const RUNNING_STATES = new Set(['active', 'verifying']);
 let runtimeStates = {};
 let notificationTargets = {};
 let recentCompletions = {};
+let logWriteChain = Promise.resolve();
 
 function normalize(value) {
   return String(value || '')
@@ -190,14 +191,101 @@ async function collectMonitoredTabs() {
 }
 
 async function addLog(event, details = {}) {
-  const result = await chrome.storage.local.get(['logs']);
-  const logs = Array.isArray(result.logs) ? result.logs : [];
-  logs.unshift({
-    at: new Date().toISOString(),
-    event,
-    ...details
-  });
-  await chrome.storage.local.set({ logs: logs.slice(0, MAX_LOGS) });
+  logWriteChain = logWriteChain
+    .catch(() => {})
+    .then(async () => {
+      const result = await chrome.storage.local.get(['logs']);
+      const logs = Array.isArray(result.logs) ? result.logs : [];
+      logs.unshift({
+        at: new Date().toISOString(),
+        event,
+        ...details
+      });
+      await chrome.storage.local.set({ logs: logs.slice(0, MAX_LOGS) });
+    });
+  return logWriteChain;
+}
+
+function sanitizeDiagnosticDetails(details = {}) {
+  const allowedKeys = new Set([
+    'source', 'from', 'to', 'reason', 'composerRole',
+    'stopPresent', 'sendPresent', 'assistantPresent', 'errorPresent',
+    'stopSeen', 'sawAssistantActivity', 'manualStop', 'delayMs',
+    'result', 'inScope', 'desktop', 'ntfy'
+  ]);
+  const clean = {};
+  for (const [key, value] of Object.entries(details || {})) {
+    if (!allowedKeys.has(key)) continue;
+    if (typeof value === 'string' || typeof value === 'boolean' || typeof value === 'number' || value === null || value === undefined) {
+      clean[key] = value;
+    }
+  }
+  return clean;
+}
+
+async function collectDiagnostics(tabId) {
+  const settings = await getSettings();
+  const storage = await chrome.storage.local.get(['logs']);
+  const logs = Array.isArray(storage.logs) ? storage.logs : [];
+  const numericTabId = Number(tabId);
+  const hasTabId = Number.isFinite(numericTabId);
+
+  let contentStatus = null;
+  let tab = null;
+  if (hasTabId) {
+    try {
+      tab = await chrome.tabs.get(numericTabId);
+    } catch (_) {
+      tab = null;
+    }
+    try {
+      contentStatus = await chrome.tabs.sendMessage(numericTabId, { type: 'GET_CONTENT_STATUS' });
+    } catch (_) {
+      contentStatus = null;
+    }
+  }
+
+  let releaseVersion = null;
+  try {
+    const response = await fetch(chrome.runtime.getURL('release.json'), { cache: 'no-store' });
+    if (response.ok) {
+      const release = await response.json();
+      releaseVersion = normalize(release.version) || null;
+    }
+  } catch (_) {
+    releaseVersion = null;
+  }
+
+  const selectedLogs = logs
+    .filter((entry) => !hasTabId || entry.tabId === numericTabId || entry.tabId == null)
+    .slice(0, 220);
+
+  return {
+    generatedAt: new Date().toISOString(),
+    extensionVersion: chrome.runtime.getManifest().version,
+    releaseVersion,
+    tabId: hasTabId ? numericTabId : null,
+    tab: tab ? {
+      title: sanitizeTitle(tab.title),
+      url: tab.url || null,
+      active: Boolean(tab.active),
+      windowId: tab.windowId
+    } : null,
+    contentStatus,
+    runtimeState: hasTabId ? (runtimeStates[String(numericTabId)] || null) : null,
+    settings: {
+      enabled: settings.enabled,
+      patterns: Array.isArray(settings.patterns) ? settings.patterns : [],
+      desktopEnabled: settings.desktopEnabled,
+      notifyWhenActive: settings.notifyWhenActive,
+      ntfyEnabled: settings.ntfyEnabled,
+      ntfyConfigured: Boolean(normalize(settings.ntfyTopic)),
+      ntfyTokenConfigured: Boolean(normalize(settings.ntfyToken)),
+      ntfyIncludeChatLink: settings.ntfyIncludeChatLink,
+      stabilityWindowMs: settings.stabilityWindowMs
+    },
+    logs: selectedLogs
+  };
 }
 
 async function persistSession() {
@@ -239,14 +327,24 @@ async function showDesktopNotification({ tabId, title, url, durationMs }) {
   notificationTargets[notificationId] = { tabId, url, createdAt: Date.now() };
   await persistSession();
 
-  await chrome.notifications.create(notificationId, {
-    type: 'basic',
-    iconUrl: chrome.runtime.getURL('assets/icon128.png'),
-    title: `ChatGPT — ${title}`,
-    message: `Response completed in ${formatDuration(durationMs)}.`,
-    priority: 2
-  });
-  return notificationId;
+  try {
+    await chrome.notifications.create(notificationId, {
+      type: 'basic',
+      iconUrl: chrome.runtime.getURL('assets/icon128.png'),
+      title: `ChatGPT — ${title}`,
+      message: `Response completed in ${formatDuration(durationMs)}.`,
+      priority: 2
+    });
+    await addLog('desktop-notification-created', { tabId, title, notificationId });
+    return notificationId;
+  } catch (error) {
+    await addLog('desktop-notification-error', {
+      tabId,
+      title,
+      message: String(error?.message || error)
+    });
+    throw error;
+  }
 }
 
 async function publishNtfy(settings, { title, url, durationMs }) {
@@ -292,6 +390,13 @@ async function processCompletion(message, sender) {
   const url = message.url || sender.tab?.url || 'https://chatgpt.com/';
   const cycleKey = `${tabId}:${message.cycleId}`;
 
+  await addLog('completion-received', {
+    tabId,
+    title,
+    cycleId: message.cycleId,
+    durationMs: message.durationMs
+  });
+
   pruneRecentCompletions();
   if (recentCompletions[cycleKey]) {
     await addLog('completion-duplicate-suppressed', { tabId, title, cycleId: message.cycleId });
@@ -323,13 +428,22 @@ async function processCompletion(message, sender) {
     return { ok: true, inScope: false };
   }
 
+  await addLog('completion-in-scope', {
+    tabId,
+    title,
+    cycleId: message.cycleId,
+    matchedRule
+  });
+
   const results = { desktop: 'disabled', ntfy: 'disabled' };
 
   if (settings.desktopEnabled) {
+    await addLog('desktop-delivery-start', { tabId, title, cycleId: message.cycleId });
     if (!settings.notifyWhenActive) {
       const activeTabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
       if (activeTabs.some((tab) => tab.id === tabId)) {
         results.desktop = 'suppressed-active';
+        await addLog('desktop-delivery-suppressed-active', { tabId, title, cycleId: message.cycleId });
       } else {
         await showDesktopNotification({ tabId, title, url, durationMs: message.durationMs });
         results.desktop = 'sent';
@@ -342,20 +456,29 @@ async function processCompletion(message, sender) {
 
   if (settings.ntfyEnabled) {
     try {
+      await addLog('ntfy-delivery-start', { tabId, title, cycleId: message.cycleId });
       await publishNtfy(settings, { title, url, durationMs: message.durationMs });
       results.ntfy = 'sent';
+      await addLog('ntfy-delivery-sent', { tabId, title, cycleId: message.cycleId });
     } catch (error) {
       results.ntfy = 'failed';
       await addLog('ntfy-error', { tabId, title, message: String(error?.message || error) });
     }
   }
 
-  runtimeStates[String(tabId)] = {
+  const deliveryAt = Date.now();
+  const deliveryState = {
     ...(runtimeStates[String(tabId)] || {}),
     lastDesktopDelivery: results.desktop,
     lastNtfyDelivery: results.ntfy,
-    lastDeliveryAt: Date.now()
+    lastDeliveryAt: deliveryAt
   };
+  if (results.desktop === 'sent') deliveryState.lastSuccessfulDesktopAt = deliveryAt;
+  if (results.ntfy === 'sent') deliveryState.lastSuccessfulNtfyAt = deliveryAt;
+  if (results.desktop === 'sent' || results.ntfy === 'sent') {
+    deliveryState.lastSuccessfulNotificationAt = deliveryAt;
+  }
+  runtimeStates[String(tabId)] = deliveryState;
   await persistSession();
 
   await updateBadge(settings);
@@ -394,6 +517,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       const title = sanitizeTitle(message.title || sender.tab?.title);
       const matchedRule = matchTitleRule(title, settings);
       runtimeStates[String(tabId)] = {
+        ...(runtimeStates[String(tabId)] || {}),
         state: message.state,
         title,
         url: message.url || sender.tab?.url,
@@ -409,6 +533,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       await updateBadge(settings);
       sendResponse({ ok: true });
     })();
+    return true;
+  }
+
+  if (message.type === 'DIAGNOSTIC_EVENT') {
+    const tabId = sender.tab?.id;
+    if (!tabId) {
+      sendResponse({ ok: false, reason: 'missing-tab' });
+      return;
+    }
+    void addLog('content:' + normalize(message.event), {
+      tabId,
+      title: sanitizeTitle(message.title || sender.tab?.title),
+      cycleId: message.cycleId ?? null,
+      state: message.state || null,
+      titleSource: message.titleSource || null,
+      ...sanitizeDiagnosticDetails(message.details)
+    }).then(() => sendResponse({ ok: true }))
+      .catch((error) => sendResponse({ ok: false, error: String(error?.message || error) }));
     return true;
   }
 
@@ -436,6 +578,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       await chrome.windows.update(tab.windowId, { focused: true });
       sendResponse({ ok: true });
     })().catch((error) => sendResponse({ ok: false, error: String(error?.message || error) }));
+    return true;
+  }
+
+  if (message.type === 'GET_DIAGNOSTICS') {
+    void collectDiagnostics(message.tabId)
+      .then((diagnostics) => sendResponse({ ok: true, diagnostics }))
+      .catch((error) => sendResponse({ ok: false, error: String(error?.message || error) }));
     return true;
   }
 
@@ -530,9 +679,21 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (!changeInfo.url) return;
-  if (/^https:\/\/(chatgpt\.com|chat\.openai\.com)\//i.test(changeInfo.url)) return;
+  if (/^https:\/\/(chatgpt\.com|chat\.openai\.com)\//i.test(changeInfo.url)) {
+    void addLog('tab-chatgpt-navigation', {
+      tabId,
+      title: sanitizeTitle(tab?.title),
+      url: changeInfo.url
+    });
+    return;
+  }
   if (!runtimeStates[String(tabId)]) return;
 
+  void addLog('tab-navigated-away', {
+    tabId,
+    title: sanitizeTitle(tab?.title),
+    url: changeInfo.url
+  });
   delete runtimeStates[String(tabId)];
   void (async () => {
     await persistSession();
@@ -553,4 +714,7 @@ void (async () => {
   await restoreSession();
   await ensureDefaultSettings();
   await updateBadge();
+  await addLog('service-worker-start', {
+    version: chrome.runtime.getManifest().version
+  });
 })();
