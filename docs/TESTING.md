@@ -51,3 +51,25 @@ Run these tests in Brave after every detector change.
 | Monitored ChatGPT tab is closed or navigates away | It no longer contributes to the badge/dashboard |
 | Popup remains open during generation | Dashboard state refreshes without reopening the popup |
 | Deployment diagnostic | `Deployment: OK · 0.1.6` |
+
+
+## v0.1.7 intermittent-failure diagnostics
+
+| Scenario | Expected result |
+|---|---|
+| Open popup after deployment | Version shows `v0.1.7`; deployment shows `OK · 0.1.7` |
+| Generate a monitored response | Diagnostics retain cycle/state/delivery events without message content |
+| Successful Windows notification | **Last Windows** shows a timestamp |
+| Successful ntfy notification | **Last mobile** shows a timestamp |
+| Click **Copy diagnostics** | Clipboard receives a report containing settings/state/event history |
+| Inspect copied report | No ChatGPT response text, ntfy topic value, or ntfy token value |
+| Click **Clear diagnostics** | Rolling diagnostic history is cleared |
+
+### Missed-notification capture procedure
+
+1. When a monitored response finishes but no expected notification appears, keep that ChatGPT tab open.
+2. Click the extension toolbar icon in the affected tab.
+3. Expand **Diagnostics**.
+4. Click **Copy diagnostics**.
+5. Paste the entire copied report into the troubleshooting chat.
+6. Avoid reloading the affected ChatGPT tab before copying if possible; the persistent event log survives, but live content-state evidence is more useful before reload.
