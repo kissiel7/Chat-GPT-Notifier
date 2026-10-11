@@ -87,3 +87,18 @@ Run these tests in Brave after every detector change.
 | Dashboard probe exceeds timeout | Popup shows an explicit dashboard timeout message |
 | Several monitored tabs are open | Status probes complete in parallel and dashboard renders promptly |
 | Unreachable monitored tab | Row reports `detector unavailable — refresh tab` rather than `idle` |
+
+
+## v0.1.9 automatic detector recovery
+
+| Scenario | Expected result |
+|---|---|
+| Reload unpacked extension with ChatGPT tabs already open | Existing tabs recover detectors without a manual page refresh |
+| Open popup on a tab whose detector is missing | Popup/background inject the detector and obtain live state |
+| Detector recovery succeeds while tab is idle | Dashboard returns to `idle` |
+| Detector recovery occurs while ChatGPT is actively generating | Content detector starts a `recovered-active` cycle and dashboard shows `generating` |
+| Recovered-active response finishes | Normal scoped notification path runs once |
+| Recovery occurs only after a response already finished | No retroactive completion notification |
+| Script injection fails | Dashboard reports detector recovery failure; manual refresh remains a fallback |
+| Several stale ChatGPT tabs are open | Recovery attempts run independently and do not duplicate per tab |
+| Deployment diagnostic | `Deployment: OK · 0.1.9` |
