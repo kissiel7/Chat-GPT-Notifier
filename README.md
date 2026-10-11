@@ -4,7 +4,7 @@ A small Chromium Manifest V3 extension that notifies you when selected ChatGPT c
 
 ## Current scope
 
-Version `0.1.7` monitors ChatGPT tabs and notifies only when the conversation title matches configured rules. The initial rules are:
+Version `0.1.8` monitors ChatGPT tabs and notifies only when the conversation title matches configured rules. The initial rules are:
 
 - `/^Finanzblick\s+\d+$/i`
 - `/^Documents Storage\s+\d+$/i`
@@ -124,3 +124,10 @@ The diagnostic report deliberately excludes ChatGPT response text, ntfy topic va
 ### Detector availability in the dashboard
 
 A monitored tab is no longer silently shown as `idle` when the popup cannot reach its content detector. v0.1.7 shows `detector unavailable — refresh tab` instead. This can occur after an unpacked-extension reload while an already-open ChatGPT tab has not itself been refreshed. Such a tab cannot be relied on for completion notifications until its detector is available again.
+
+
+## v0.1.8 dashboard responsiveness fix
+
+The monitored-tabs dashboard no longer waits indefinitely for stale or unreachable content scripts. Detector probes for all ChatGPT tabs now run in parallel with a short per-tab timeout. The popup itself also has a bounded dashboard request timeout, so it either renders the monitored-tab state quickly or shows a concrete timeout message instead of remaining on `Loading…`.
+
+Tabs whose detector cannot be reached continue to be shown as `detector unavailable — refresh tab`; they are not misreported as idle.
