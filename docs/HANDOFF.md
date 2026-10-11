@@ -10,13 +10,13 @@ GitHub: `kissiel7/Chat-GPT-Notifier` (`main`)
 
 ## Deployment mirror
 
-Dropbox: `/Projects/ChatGPT-Notifier`
+Dropbox: `/Projects/Chrome Extension-ChatGPT Notifier`
 
 GitHub is authoritative. Dropbox is only the deployment mirror.
 
 **Strict versioning rule:** every GitHub change that is mirrored to Dropbox requires a new extension version, including documentation-only or deployment-only changes.
 
-The Dropbox project folder itself is the unpacked deployment. Future deployments should update it in place so Brave/Chrome/Edge can continue pointing directly at `/Projects/ChatGPT-Notifier` with **Load unpacked**. Do not create ZIP deployment artifacts; GitHub history is the archive.
+The Dropbox project folder itself is the unpacked deployment. Future deployments should update it in place so Brave/Chrome/Edge can continue pointing directly at `/Projects/Chrome Extension-ChatGPT Notifier` with **Load unpacked**. Do not create ZIP deployment artifacts; GitHub history is the archive.
 
 ## Initial monitored chat names
 
@@ -45,7 +45,7 @@ The first live test showed that scope recognition and desktop test notifications
 
 ## Next validation step
 
-Load `/Projects/ChatGPT-Notifier` directly in Brave as an unpacked extension and run the scenarios in `docs/TESTING.md`, starting with:
+Load `/Projects/Chrome Extension-ChatGPT Notifier` directly in Brave as an unpacked extension and run the scenarios in `docs/TESTING.md`, starting with:
 
 1. Windows test notification.
 2. Out-of-scope conversation response.
