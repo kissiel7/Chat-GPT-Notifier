@@ -233,12 +233,25 @@ async function recoverContentDetector(tab) {
 }
 
 async function recoverAllChatGptDetectors(reason = 'startup') {
+  const settings = await getSettings();
   const tabs = await chrome.tabs.query({
     url: ['https://chatgpt.com/*', 'https://chat.openai.com/*']
   });
-  await addLog('detector-recovery-scan', { reason, tabCount: tabs.length });
-  await Promise.all(tabs.map((tab) => recoverContentDetector(tab)));
-  await updateBadge();
+
+  const candidates = tabs.filter((tab) => {
+    const stored = runtimeStates[String(tab.id)] || {};
+    const title = sanitizeTitle(stored.title || tab.title);
+    return Boolean(matchTitleRule(title, settings));
+  });
+
+  await addLog('detector-recovery-scan', {
+    reason,
+    tabCount: tabs.length,
+    monitoredTabCount: candidates.length
+  });
+
+  await Promise.all(candidates.map((tab) => recoverContentDetector(tab)));
+  await updateBadge(settings);
 }
 
 async function updateBadge(settings = null) {
