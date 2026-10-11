@@ -73,3 +73,7 @@ Run these tests in Brave after every detector change.
 4. Click **Copy diagnostics**.
 5. Paste the entire copied report into the troubleshooting chat.
 6. Avoid reloading the affected ChatGPT tab before copying if possible; the persistent event log survives, but live content-state evidence is more useful before reload.
+
+
+| Monitored tab cannot be reached by content script | Dashboard shows `detector unavailable — refresh tab`, not `idle` |
+| Refresh an unavailable ChatGPT tab | Dashboard returns to a live detector state and logs detector restoration |
