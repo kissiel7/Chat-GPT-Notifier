@@ -2,7 +2,7 @@
 
 ## Current release
 
-`0.1.11` stable monitored-tab dashboard with detector recovery.
+`0.1.12` current-chat title freshness and scope controls.
 
 ## Source of truth
 
@@ -197,3 +197,19 @@ Fix:
 - detector/completion semantics remain unchanged.
 
 Expected result: while a monitored response runs, the popup should remain stable at `generating` instead of alternating with timeout messages.
+
+
+## v0.1.12
+
+Diagnostics for `Web Context Capture Implementation` showed:
+- content status had the correct canonical title;
+- background runtime state still held the fallback title `ChatGPT`;
+- scope was therefore evaluated as out-of-scope even though the popup was on a named conversation.
+
+Fix:
+- live content title takes precedence over background cache;
+- `GET_TAB_STATUS` refreshes cached title when a newer specific title is supplied;
+- content script emits a status update when canonical title changes;
+- dashboard/recovery candidate selection prefers a current specific browser title over stale fallback state.
+
+Expected result: **Monitor this chat** is available for a named out-of-scope conversation immediately after its title becomes available, without requiring a page refresh.
