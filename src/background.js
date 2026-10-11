@@ -26,6 +26,7 @@ let runtimeStates = {};
 let notificationTargets = {};
 let recentCompletions = {};
 let logWriteChain = Promise.resolve();
+const detectorRecoveryPromises = new Map();
 
 function normalize(value) {
   return String(value || '')
@@ -134,6 +135,112 @@ async function getContentStatusWithTimeout(tabId) {
   }
 }
 
+function isChatGptUrl(url) {
+  return /^https:\/\/(chatgpt\.com|chat\.openai\.com)\//i.test(url || '');
+}
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function recoverContentDetector(tab) {
+  if (!tab?.id || !isChatGptUrl(tab.url)) return null;
+
+  const existing = await getContentStatusWithTimeout(tab.id);
+  if (existing) return existing;
+
+  if (detectorRecoveryPromises.has(tab.id)) {
+    return detectorRecoveryPromises.get(tab.id);
+  }
+
+  const recoveryPromise = (async () => {
+    const title = sanitizeTitle(tab.title);
+    runtimeStates[String(tab.id)] = {
+      ...(runtimeStates[String(tab.id)] || {}),
+      state: 'recovering',
+      detectorAvailable: false,
+      title,
+      url: tab.url,
+      lastEvent: 'detector-recovery-start',
+      updatedAt: Date.now()
+    };
+    await persistSession();
+    await addLog('detector-recovery-start', { tabId: tab.id, title });
+
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ['src/content.js']
+      });
+      await addLog('detector-recovery-injected', { tabId: tab.id, title });
+      await delay(120);
+
+      const recovered = await getContentStatusWithTimeout(tab.id);
+      if (!recovered) {
+        runtimeStates[String(tab.id)] = {
+          ...(runtimeStates[String(tab.id)] || {}),
+          state: 'unavailable',
+          detectorAvailable: false,
+          lastEvent: 'detector-recovery-no-response',
+          updatedAt: Date.now()
+        };
+        await persistSession();
+        await addLog('detector-recovery-no-response', { tabId: tab.id, title });
+        return null;
+      }
+
+      runtimeStates[String(tab.id)] = {
+        ...(runtimeStates[String(tab.id)] || {}),
+        state: recovered.state || 'idle',
+        detectorAvailable: true,
+        title: sanitizeTitle(recovered.title || title),
+        url: recovered.url || tab.url,
+        titleSource: recovered.titleSource || null,
+        cycleId: recovered.cycleId || null,
+        lastEvent: recovered.lastEvent || 'detector-recovered',
+        updatedAt: Date.now()
+      };
+      await persistSession();
+      await addLog('detector-recovery-success', {
+        tabId: tab.id,
+        title: sanitizeTitle(recovered.title || title),
+        state: recovered.state || 'idle',
+        composerRole: recovered.composerRole || null
+      });
+      return recovered;
+    } catch (error) {
+      runtimeStates[String(tab.id)] = {
+        ...(runtimeStates[String(tab.id)] || {}),
+        state: 'unavailable',
+        detectorAvailable: false,
+        lastEvent: 'detector-recovery-failed',
+        updatedAt: Date.now()
+      };
+      await persistSession();
+      await addLog('detector-recovery-failed', {
+        tabId: tab.id,
+        title,
+        message: String(error?.message || error)
+      });
+      return null;
+    }
+  })().finally(() => {
+    detectorRecoveryPromises.delete(tab.id);
+  });
+
+  detectorRecoveryPromises.set(tab.id, recoveryPromise);
+  return recoveryPromise;
+}
+
+async function recoverAllChatGptDetectors(reason = 'startup') {
+  const tabs = await chrome.tabs.query({
+    url: ['https://chatgpt.com/*', 'https://chat.openai.com/*']
+  });
+  await addLog('detector-recovery-scan', { reason, tabCount: tabs.length });
+  await Promise.all(tabs.map((tab) => recoverContentDetector(tab)));
+  await updateBadge();
+}
+
 async function updateBadge(settings = null) {
   const effectiveSettings = settings || await getSettings();
   let runningCount = 0;
@@ -159,7 +266,7 @@ async function collectMonitoredTabs() {
   const tabStatuses = await Promise.all(
     tabs.map(async (tab) => ({
       tab,
-      contentStatus: tab.id ? await getContentStatusWithTimeout(tab.id) : null
+      contentStatus: tab.id ? await recoverContentDetector(tab) : null
     }))
   );
 
@@ -284,7 +391,7 @@ async function collectDiagnostics(tabId) {
     } catch (_) {
       tab = null;
     }
-    contentStatus = await getContentStatusWithTimeout(numericTabId);
+    contentStatus = tab ? await recoverContentDetector(tab) : null;
   }
 
   let releaseVersion = null;
@@ -537,11 +644,17 @@ async function processCompletion(message, sender) {
 }
 
 chrome.runtime.onInstalled.addListener(() => {
-  void ensureDefaultSettings();
+  void (async () => {
+    await ensureDefaultSettings();
+    await recoverAllChatGptDetectors('installed');
+  })();
 });
 
 chrome.runtime.onStartup.addListener(() => {
-  void ensureDefaultSettings();
+  void (async () => {
+    await ensureDefaultSettings();
+    await recoverAllChatGptDetectors('browser-startup');
+  })();
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -602,6 +715,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       await addLog('completion-handler-error', { message: String(error?.message || error) });
       sendResponse({ ok: false, error: String(error?.message || error) });
     });
+    return true;
+  }
+
+  if (message.type === 'ENSURE_CONTENT_DETECTOR') {
+    void (async () => {
+      const tabId = Number(message.tabId);
+      if (!Number.isFinite(tabId)) throw new Error('Invalid tab id');
+      const tab = await chrome.tabs.get(tabId);
+      const contentStatus = await recoverContentDetector(tab);
+      sendResponse({ ok: Boolean(contentStatus), contentStatus });
+    })().catch((error) => sendResponse({ ok: false, error: String(error?.message || error) }));
     return true;
   }
 
@@ -721,8 +845,12 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 });
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.status === 'complete' && isChatGptUrl(tab?.url)) {
+    void recoverContentDetector(tab);
+  }
+
   if (!changeInfo.url) return;
-  if (/^https:\/\/(chatgpt\.com|chat\.openai\.com)\//i.test(changeInfo.url)) {
+  if (isChatGptUrl(changeInfo.url)) {
     void addLog('tab-chatgpt-navigation', {
       tabId,
       title: sanitizeTitle(tab?.title),
@@ -760,4 +888,5 @@ void (async () => {
   await addLog('service-worker-start', {
     version: chrome.runtime.getManifest().version
   });
+  await recoverAllChatGptDetectors('service-worker-start');
 })();
