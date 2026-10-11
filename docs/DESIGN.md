@@ -119,3 +119,10 @@ Recovery flow:
 The worker also scans open ChatGPT tabs on service-worker startup/install/browser startup and attempts recovery proactively.
 
 When a content script initializes and sees the composer already in the Stop/generating state, it starts a `recovered-active` cycle. This allows tracking to continue from the recovery point without claiming knowledge of the response's true original start time. No retroactive completion is generated if injection occurs after the response has already finished.
+
+
+## Dashboard collection policy
+
+The popup dashboard must not make detector recovery part of its critical rendering path for every ChatGPT tab. It first identifies tabs whose stored/browser title matches a configured monitoring rule, then performs bounded status probes only for those monitored candidates.
+
+If a monitored probe does not answer quickly, the dashboard uses the last background runtime state for display and starts recovery asynchronously. Popup refreshes are serialized so only one dashboard request can be active at a time. This prevents a slow detector from causing UI flapping or recovery storms.
