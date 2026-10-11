@@ -452,7 +452,11 @@
 
     if (!lastSnapshot) {
       lastSnapshot = snapshot;
-      emitStatus('initialized');
+      if (snapshot.stopPresent || snapshot.composerRole === 'stop') {
+        beginCycle(snapshot, 'recovered-active');
+      } else {
+        emitStatus('initialized');
+      }
       return;
     }
 
