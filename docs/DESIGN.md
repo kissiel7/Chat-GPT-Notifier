@@ -100,3 +100,22 @@ The content script emits low-volume diagnostic events only on meaningful transit
 The background worker serializes diagnostic-log writes to avoid read/modify/write races between multiple tabs and retains the newest 300 records in `chrome.storage.local`. Background events also cover completion receipt, de-duplication, scope outcome, desktop notification creation/error, ntfy delivery, and navigation.
 
 `GET_DIAGNOSTICS` returns a sanitized per-tab report containing runtime state, content status, matching rules, enabled notification channels, and relevant logs. ntfy topic/token values are excluded; only configured/not-configured booleans are exposed.
+
+
+## Automatic detector recovery
+
+v0.1.9 removes the normal need to refresh already-open ChatGPT tabs after an unpacked-extension reload.
+
+The background worker uses `chrome.scripting.executeScript` to inject `src/content.js` into a ChatGPT tab when `GET_CONTENT_STATUS` does not answer within the bounded probe window. Recovery operations are de-duplicated per tab so concurrent popup/dashboard/startup requests share one injection attempt.
+
+Recovery flow:
+
+1. Probe the existing detector.
+2. If it responds, reuse it.
+3. Otherwise mark the tab `recovering` and inject the content script.
+4. Probe again after a short delay.
+5. Mark the detector available on success or unavailable on failure.
+
+The worker also scans open ChatGPT tabs on service-worker startup/install/browser startup and attempts recovery proactively.
+
+When a content script initializes and sees the composer already in the Stop/generating state, it starts a `recovered-active` cycle. This allows tracking to continue from the recovery point without claiming knowledge of the response's true original start time. No retroactive completion is generated if injection occurs after the response has already finished.
