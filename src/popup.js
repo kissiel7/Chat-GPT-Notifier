@@ -307,7 +307,7 @@ async function load() {
     const status = await getBackgroundStatus(tab, contentStatus);
     current.status = status;
 
-    const title = normalize(status?.title || contentStatus?.title || tab.title || 'ChatGPT');
+    const title = normalize(contentStatus?.title || status?.title || tab.title || 'ChatGPT');
     current.title = title;
     current.inScope = Boolean(status?.inScope);
     current.matchedRule = status?.matchedRule || null;
