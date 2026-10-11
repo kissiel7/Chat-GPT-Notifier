@@ -4,7 +4,7 @@ A small Chromium Manifest V3 extension that notifies you when selected ChatGPT c
 
 ## Current scope
 
-Version `0.1.9` monitors ChatGPT tabs and notifies only when the conversation title matches configured rules. The initial rules are:
+Version `0.1.10` monitors ChatGPT tabs and notifies only when the conversation title matches configured rules. The initial rules are:
 
 - `/^Finanzblick\s+\d+$/i`
 - `/^Documents Storage\s+\d+$/i`
@@ -144,3 +144,12 @@ If recovery happens while ChatGPT is already generating, the newly injected dete
 If the response already finished before recovery, the extension intentionally does not synthesize a retroactive completion notification because it cannot safely distinguish a new completion from an old conversation.
 
 Dashboard states now distinguish `recovering detector…` from a genuine recovery failure. Manual page refresh remains only a fallback if script injection itself fails.
+
+
+## v0.1.10 duplicate-notification fix
+
+Diagnostics from a real failure showed that repeated detector recovery attempts had injected multiple independent copies of `src/content.js` into the same ChatGPT tab. Each copy tracked the same generation with its own cycle ID and therefore each emitted its own completion event, producing multiple Windows and ntfy notifications for one answer.
+
+The content detector is now a per-tab singleton. A reinjection checks for an already-live detector instance and exits immediately instead of registering another MutationObserver, timer, click/submit handlers, and runtime message listener. A stale detector context from an older extension reload can still be replaced.
+
+The completion heuristics themselves are unchanged.
