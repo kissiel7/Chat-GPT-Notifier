@@ -263,41 +263,36 @@ async function collectMonitoredTabs() {
     url: ['https://chatgpt.com/*', 'https://chat.openai.com/*']
   });
 
+  const candidates = tabs
+    .filter((tab) => tab.id)
+    .map((tab) => {
+      const stored = runtimeStates[String(tab.id)] || {};
+      const title = sanitizeTitle(stored.title || tab.title);
+      return {
+        tab,
+        stored,
+        title,
+        matchedRule: matchTitleRule(title, settings)
+      };
+    })
+    .filter((item) => Boolean(item.matchedRule));
+
   const tabStatuses = await Promise.all(
-    tabs.map(async (tab) => ({
-      tab,
-      contentStatus: tab.id ? await recoverContentDetector(tab) : null
+    candidates.map(async (item) => ({
+      ...item,
+      contentStatus: await getContentStatusWithTimeout(item.tab.id)
     }))
   );
 
   const monitored = [];
 
-  for (const { tab, contentStatus } of tabStatuses) {
-    if (!tab.id) continue;
-
-    const stored = runtimeStates[String(tab.id)] || {};
-    const detectorAvailable = Boolean(contentStatus);
-    const title = sanitizeTitle(contentStatus?.title || stored.title || tab.title);
-    const matchedRule = matchTitleRule(title, settings);
-    if (!matchedRule) continue;
-
-    if (!detectorAvailable && stored.detectorAvailable !== false) {
-      await addLog('content-detector-unavailable', {
-        tabId: tab.id,
-        title,
-        previousState: stored.state || null
-      });
-    } else if (detectorAvailable && stored.detectorAvailable === false) {
-      await addLog('content-detector-restored', {
-        tabId: tab.id,
-        title,
-        state: contentStatus?.state || null
-      });
-    }
-
-    const state = detectorAvailable
-      ? (contentStatus?.state || stored.state || 'idle')
-      : 'unavailable';
+  for (const { tab, stored, title: candidateTitle, matchedRule, contentStatus } of tabStatuses) {
+    const fresh = Boolean(contentStatus);
+    const title = sanitizeTitle(contentStatus?.title || candidateTitle);
+    const state = fresh
+      ? (contentStatus.state || stored.state || 'idle')
+      : (stored.state || 'recovering');
+    const detectorAvailable = fresh ? true : stored.detectorAvailable !== false;
     const url = contentStatus?.url || stored.url || tab.url || 'https://chatgpt.com/';
     const titleSource = contentStatus?.titleSource || stored.titleSource || 'browser-tab';
     const lastEvent = contentStatus?.lastEvent || stored.lastEvent || null;
@@ -313,8 +308,12 @@ async function collectMonitoredTabs() {
       titleSource,
       lastEvent,
       detectorAvailable,
-      updatedAt: Date.now()
+      updatedAt: fresh ? Date.now() : (stored.updatedAt || Date.now())
     };
+
+    if (!fresh) {
+      void recoverContentDetector(tab);
+    }
 
     monitored.push({
       tabId: tab.id,
@@ -323,7 +322,8 @@ async function collectMonitoredTabs() {
       url,
       state,
       detectorAvailable,
-      running: detectorAvailable && isRunningState(state),
+      statusFresh: fresh,
+      running: isRunningState(state),
       active: Boolean(tab.active),
       matchedRule,
       lastEvent,
@@ -338,11 +338,11 @@ async function collectMonitoredTabs() {
   });
 
   await persistSession();
-  const runningCount = await updateBadge(settings);
+  const runningCount = monitored.filter((tab) => tab.running).length;
+  await chrome.action.setBadgeText({ text: runningCount ? String(runningCount) : '' });
 
   return { tabs: monitored, runningCount };
 }
-
 async function addLog(event, details = {}) {
   logWriteChain = logWriteChain
     .catch(() => {})
