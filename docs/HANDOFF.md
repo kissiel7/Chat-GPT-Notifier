@@ -142,3 +142,8 @@ Added:
 - response text, ntfy topic value and ntfy token value are excluded.
 
 When a notification is missed, leave the affected ChatGPT tab open if possible, click the extension icon, expand **Diagnostics**, click **Copy diagnostics**, and paste the complete report into ChatGPT. Do not change detector behavior until at least one missed case has been captured unless a separate deterministic bug is found.
+
+
+### Important v0.1.7 dashboard correction
+
+v0.1.6 treated failure to contact a tab's content script as `idle`. That masked a potentially important cause of missed notifications after extension reloads. v0.1.7 now marks that condition as `detector unavailable — refresh tab` and logs detector unavailable/restored transitions. A genuinely idle tab and an uninstrumented tab are therefore distinguishable.
