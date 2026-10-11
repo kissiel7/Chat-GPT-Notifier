@@ -2,7 +2,7 @@
 
 ## Current release
 
-`0.1.7` intermittent-notification diagnostic capture.
+`0.1.8` dashboard responsiveness and diagnostic capture.
 
 ## Source of truth
 
@@ -147,3 +147,18 @@ When a notification is missed, leave the affected ChatGPT tab open if possible, 
 ### Important v0.1.7 dashboard correction
 
 v0.1.6 treated failure to contact a tab's content script as `idle`. That masked a potentially important cause of missed notifications after extension reloads. v0.1.7 now marks that condition as `detector unavailable — refresh tab` and logs detector unavailable/restored transitions. A genuinely idle tab and an uninstrumented tab are therefore distinguishable.
+
+
+## v0.1.8
+
+The v0.1.7 popup could remain on **Loading monitored chats…** when one or more ChatGPT tabs had stale/unreachable content scripts. The dashboard queried tabs sequentially and had no upper bound on a stalled message.
+
+Fix:
+- content-status probes run in parallel;
+- each tab probe is bounded to 650 ms;
+- popup content-status lookup is bounded;
+- the whole dashboard request is bounded to 1.8 seconds;
+- timeout is shown explicitly instead of an indefinite loading state;
+- detector/completion heuristics remain unchanged.
+
+After reloading an unpacked extension, refresh existing ChatGPT tabs once so their content detectors are active.
