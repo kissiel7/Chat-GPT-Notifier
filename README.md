@@ -4,7 +4,7 @@ A small Chromium Manifest V3 extension that notifies you when selected ChatGPT c
 
 ## Current scope
 
-Version `0.1.8` monitors ChatGPT tabs and notifies only when the conversation title matches configured rules. The initial rules are:
+Version `0.1.9` monitors ChatGPT tabs and notifies only when the conversation title matches configured rules. The initial rules are:
 
 - `/^Finanzblick\s+\d+$/i`
 - `/^Documents Storage\s+\d+$/i`
@@ -131,3 +131,16 @@ A monitored tab is no longer silently shown as `idle` when the popup cannot reac
 The monitored-tabs dashboard no longer waits indefinitely for stale or unreachable content scripts. Detector probes for all ChatGPT tabs now run in parallel with a short per-tab timeout. The popup itself also has a bounded dashboard request timeout, so it either renders the monitored-tab state quickly or shows a concrete timeout message instead of remaining on `Loading…`.
 
 Tabs whose detector cannot be reached continue to be shown as `detector unavailable — refresh tab`; they are not misreported as idle.
+
+
+## v0.1.9 automatic detector recovery
+
+The extension can now restore missing ChatGPT content detectors without reloading the page. It requests Chromium's `scripting` permission and, when a detector does not answer, injects `src/content.js` into the existing ChatGPT tab, waits briefly, and probes again.
+
+Recovery is attempted proactively when the service worker starts, after browser startup/install/update, when a ChatGPT tab finishes loading, when the popup needs the current-tab detector, and while collecting monitored-tab state.
+
+If recovery happens while ChatGPT is already generating, the newly injected detector inspects the current composer state. A visible Stop/generating state initializes a `recovered-active` cycle so the remainder of that response can still be tracked and notified when it completes.
+
+If the response already finished before recovery, the extension intentionally does not synthesize a retroactive completion notification because it cannot safely distinguish a new completion from an old conversation.
+
+Dashboard states now distinguish `recovering detector…` from a genuine recovery failure. Manual page refresh remains only a fallback if script injection itself fails.
