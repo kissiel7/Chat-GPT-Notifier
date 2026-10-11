@@ -58,6 +58,13 @@ function renderScopeButton() {
   button.textContent = 'Already monitored by a rule';
 }
 
+function formatTimestamp(value) {
+  if (!value) return '—';
+  const date = new Date(Number(value));
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleString();
+}
+
 function renderNotificationState(status) {
   const desktopEnabled = status?.settings?.desktopEnabled !== false;
   const ntfyEnabled = Boolean(status?.settings?.ntfyEnabled);
@@ -74,6 +81,8 @@ function renderNotificationState(status) {
 
   $('testDesktop').disabled = !desktopEnabled;
   $('testNtfy').disabled = !ntfyEnabled;
+  $('lastDesktopSuccess').textContent = formatTimestamp(status?.lastSuccessfulDesktopAt);
+  $('lastNtfySuccess').textContent = formatTimestamp(status?.lastSuccessfulNtfyAt);
 }
 
 function monitoredStateLabel(tab) {
@@ -235,6 +244,8 @@ async function load() {
       $('delivery').textContent = '—';
       $('desktop').textContent = '—';
       $('ntfy').textContent = '—';
+      $('lastDesktopSuccess').textContent = '—';
+      $('lastNtfySuccess').textContent = '—';
       $('testDesktop').disabled = false;
       $('testNtfy').disabled = true;
       renderScopeButton();
@@ -323,6 +334,80 @@ async function runNotificationTest(type, successText) {
   }
 }
 
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return;
+  } catch (_) {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    document.execCommand('copy');
+    textarea.remove();
+  }
+}
+
+function formatDiagnosticsReport(diagnostics) {
+  const logs = Array.isArray(diagnostics?.logs) ? [...diagnostics.logs].reverse() : [];
+  const lines = [
+    'ChatGPT Notifier diagnostics',
+    'Generated: ' + (diagnostics?.generatedAt || 'unknown'),
+    'Extension: ' + (diagnostics?.extensionVersion || 'unknown'),
+    'Release marker: ' + (diagnostics?.releaseVersion || 'unknown'),
+    'Tab ID: ' + (diagnostics?.tabId ?? 'none'),
+    'Tab title: ' + (diagnostics?.tab?.title || diagnostics?.contentStatus?.title || 'unknown'),
+    'Tab URL: ' + (diagnostics?.tab?.url || diagnostics?.contentStatus?.url || 'unknown'),
+    '',
+    'Settings:',
+    JSON.stringify(diagnostics?.settings || {}, null, 2),
+    '',
+    'Content status:',
+    JSON.stringify(diagnostics?.contentStatus || null, null, 2),
+    '',
+    'Background runtime state:',
+    JSON.stringify(diagnostics?.runtimeState || null, null, 2),
+    '',
+    'Event log (oldest to newest):'
+  ];
+
+  for (const entry of logs) {
+    lines.push(JSON.stringify(entry));
+  }
+
+  return lines.join('\n');
+}
+
+async function copyDiagnostics() {
+  showActionStatus('');
+  try {
+    const response = await chrome.runtime.sendMessage({
+      type: 'GET_DIAGNOSTICS',
+      tabId: current.tab?.id ?? null
+    });
+    if (!response?.ok) throw new Error(response?.error || 'Could not collect diagnostics');
+    const report = formatDiagnosticsReport(response.diagnostics);
+    await copyText(report);
+    showActionStatus('Diagnostics copied. Paste them into the chat after a missed notification.');
+  } catch (error) {
+    showActionStatus('Could not copy diagnostics: ' + String(error?.message || error), true);
+  }
+}
+
+async function clearDiagnostics() {
+  showActionStatus('');
+  try {
+    const response = await chrome.runtime.sendMessage({ type: 'CLEAR_LOGS' });
+    if (!response?.ok) throw new Error(response?.error || 'Could not clear diagnostics');
+    showActionStatus('Diagnostic event history cleared.');
+  } catch (error) {
+    showActionStatus('Could not clear diagnostics: ' + String(error?.message || error), true);
+  }
+}
+
 $('toggleScope').addEventListener('click', () => {
   void updateCurrentChatScope();
 });
@@ -333,6 +418,14 @@ $('testDesktop').addEventListener('click', () => {
 
 $('testNtfy').addEventListener('click', () => {
   void runNotificationTest('TEST_NTFY', 'Mobile test notification sent.');
+});
+
+$('copyDiagnostics').addEventListener('click', () => {
+  void copyDiagnostics();
+});
+
+$('clearDiagnostics').addEventListener('click', () => {
+  void clearDiagnostics();
 });
 
 $('options').addEventListener('click', () => {
