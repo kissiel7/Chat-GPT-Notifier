@@ -133,3 +133,12 @@ If a monitored probe does not answer quickly, the dashboard uses the last backgr
 The popup distinguishes transport timing from actual detector failure. A missed direct probe or a popup-level recovery timeout is treated as transient and rendered neutrally as `Recovering detector…`. The popup continues bounded direct-status polling while background recovery proceeds.
 
 A red unavailable state is only shown when the background runtime reports a persistent recovery failure (`detector-recovery-failed` or `detector-recovery-no-response`) after repeated unsuccessful checks. Any subsequent live content status immediately clears the warning and refreshes the current-tab controls.
+
+
+## Adaptive notifier window
+
+The Chromium action-popup surface has a browser-imposed maximum size and therefore cannot satisfy a full-screen-height growth policy. v0.1.14 uses `chrome.action.onClicked` to open/reuse `src/popup.html?panel=1&tabId=<origin>` in a dedicated `chrome.windows.create({type:'popup'})` window.
+
+The originating ChatGPT tab ID is carried in the panel URL so the UI can continue to show the clicked tab even though the extension window itself becomes the focused window.
+
+In panel mode, a `ResizeObserver` watches the UI content. The window's outer height is recalculated from document content height and browser chrome, capped at `screen.availHeight - 40px`. The window is positioned near the right edge of the available screen. Only after that height cap is reached does normal page scrolling become necessary.
