@@ -136,3 +136,17 @@ Run these tests in Brave after every detector change.
 | Recovery repeatedly fails and background reports unavailable | Red `Detector unavailable` message appears |
 | Persistent failure later recovers while popup remains open | Live status clears the recovery warning |
 | Deployment diagnostic | `Deployment: OK · 0.1.13` |
+
+
+## v0.1.14 adaptive window sizing
+
+| Scenario | Expected result |
+|---|---|
+| Click toolbar icon | Dedicated ChatGPT Notifier popup window opens instead of the capped action dropdown |
+| Re-click toolbar icon | Existing notifier window is reused for the newly clicked ChatGPT tab |
+| Few monitored chats | Window shrinks to content; no unnecessary vertical scrollbar |
+| More monitored chats / expanded diagnostics | Window grows vertically with content |
+| Content fits within available screen height | No page scrolling is required |
+| Content exceeds available screen height | Window stops near screen height and page scrolling becomes available |
+| Click monitored-chat row | ChatGPT tab/window is focused; notifier window remains open |
+| Deployment diagnostic | `Deployment: OK · 0.1.14` |
