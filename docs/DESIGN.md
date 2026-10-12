@@ -142,3 +142,12 @@ The Chromium action-popup surface has a browser-imposed maximum size and therefo
 The originating ChatGPT tab ID is carried in the panel URL so the UI can continue to show the clicked tab even though the extension window itself becomes the focused window.
 
 In panel mode, a `ResizeObserver` watches the UI content. The window's outer height is recalculated from document content height and browser chrome, capped at `screen.availHeight - 40px`. The window is positioned near the right edge of the available screen. Only after that height cap is reached does normal page scrolling become necessary.
+
+
+## Native action-popup sizing
+
+v0.1.15 returns to `action.default_popup` and removes all explicit `chrome.windows.update` resize loops.
+
+The popup document has no fixed vertical size and the monitored-tab list has no independent vertical cap. Browser layout therefore determines popup height from the current content. Once Chromium reaches its built-in action-popup maximum, normal document scrolling handles the remaining content.
+
+This avoids feedback between `ResizeObserver`, window chrome dimensions, and `chrome.windows.update`, which caused the dedicated-window UI to visibly oscillate.
