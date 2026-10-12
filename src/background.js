@@ -27,6 +27,9 @@ let notificationTargets = {};
 let recentCompletions = {};
 let logWriteChain = Promise.resolve();
 const detectorRecoveryPromises = new Map();
+const PANEL_PAGE_PATH = 'src/popup.html';
+const PANEL_PAGE_URL = chrome.runtime.getURL(PANEL_PAGE_PATH);
+let notifierPanelWindowId = null;
 
 function normalize(value) {
   return String(value || '')
@@ -665,6 +668,58 @@ async function processCompletion(message, sender) {
   return { ok: true, inScope: true, results };
 }
 
+async function findNotifierPanelWindow() {
+  if (notifierPanelWindowId != null) {
+    try {
+      return await chrome.windows.get(notifierPanelWindowId, { populate: true });
+    } catch (_) {
+      notifierPanelWindowId = null;
+    }
+  }
+
+  const windows = await chrome.windows.getAll({ populate: true });
+  for (const candidate of windows) {
+    const panelTab = candidate.tabs?.find((tab) => (tab.url || '').startsWith(PANEL_PAGE_URL));
+    if (panelTab) {
+      notifierPanelWindowId = candidate.id;
+      return candidate;
+    }
+  }
+
+  return null;
+}
+
+async function openNotifierPanel(originTab) {
+  const originTabId = Number.isFinite(originTab?.id) ? originTab.id : '';
+  const panelUrl = `${PANEL_PAGE_URL}?panel=1&tabId=${encodeURIComponent(originTabId)}`;
+  const existingWindow = await findNotifierPanelWindow();
+
+  if (existingWindow?.id != null) {
+    const panelTab = existingWindow.tabs?.find((tab) => (tab.url || '').startsWith(PANEL_PAGE_URL));
+    if (panelTab?.id != null) {
+      await chrome.tabs.update(panelTab.id, { url: panelUrl, active: true });
+    }
+    await chrome.windows.update(existingWindow.id, { focused: true });
+    notifierPanelWindowId = existingWindow.id;
+    return;
+  }
+
+  const created = await chrome.windows.create({
+    url: panelUrl,
+    type: 'popup',
+    width: 520,
+    height: 640,
+    focused: true
+  });
+  notifierPanelWindowId = created.id ?? null;
+}
+
+chrome.action.onClicked.addListener((tab) => {
+  void openNotifierPanel(tab).catch((error) => {
+    void addLog('panel-open-error', { message: String(error?.message || error) });
+  });
+});
+
 chrome.runtime.onInstalled.addListener(() => {
   void (async () => {
     await ensureDefaultSettings();
@@ -866,6 +921,10 @@ chrome.notifications.onClicked.addListener((notificationId) => {
     }
     await chrome.notifications.clear(notificationId);
   })();
+});
+
+chrome.windows.onRemoved.addListener((windowId) => {
+  if (windowId === notifierPanelWindowId) notifierPanelWindowId = null;
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {
