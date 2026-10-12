@@ -1,5 +1,6 @@
 :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
-body { margin: 0; min-width: 400px; }
+html, body { margin: 0; }
+body { min-width: 400px; overflow-y: auto; }
 main { padding: 14px; }
 header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 h1 { font-size: 18px; margin: 0; }
@@ -18,7 +19,7 @@ button:disabled { cursor: default; opacity: .6; }
 .status.error { color: #a12929; opacity: 1; }
 .dashboard, .delivery { margin-top: 12px; border-top: 1px solid rgba(127,127,127,.25); padding-top: 10px; }
 .section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
-.chat-list { display: grid; gap: 6px; max-height: 210px; overflow-y: auto; }
+.chat-list { display: grid; gap: 6px; }
 .chat-tab { display: grid; grid-template-columns: 18px 1fr auto; align-items: center; gap: 8px; margin: 0; padding: 8px; text-align: left; border: 1px solid rgba(127,127,127,.28); border-radius: 8px; background: transparent; }
 .chat-tab:hover { background: rgba(127,127,127,.10); }
 .chat-tab.current { border-style: double; }
@@ -38,19 +39,3 @@ summary { cursor: pointer; font-weight: 600; }
 .diagnostics-actions { margin-top: 8px; }
 .diagnostics-actions button { margin-top: 0; }
 
-
-html.panel-window,
-html.panel-window body {
-  width: 500px;
-  min-width: 0;
-  max-width: 500px;
-}
-
-html.panel-window body {
-  overflow-y: auto;
-}
-
-html.panel-window .chat-list {
-  max-height: none;
-  overflow: visible;
-}
