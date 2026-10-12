@@ -4,7 +4,7 @@ A small Chromium Manifest V3 extension that notifies you when selected ChatGPT c
 
 ## Current scope
 
-Version `0.1.12` monitors ChatGPT tabs and notifies only when the conversation title matches configured rules. The initial rules are:
+Version `0.1.13` monitors ChatGPT tabs and notifies only when the conversation title matches configured rules. The initial rules are:
 
 - `/^Finanzblick\s+\d+$/i`
 - `/^Documents Storage\s+\d+$/i`
@@ -175,3 +175,12 @@ v0.1.12 fixes title precedence:
 - dashboard/recovery candidate selection prefers the browser's current specific title over a stale cached fallback.
 
 This is a scope/title-state fix only; detector completion semantics are unchanged.
+
+
+## v0.1.13 recovery-status UI fix
+
+A short detector probe timeout is no longer shown immediately as a red recovery failure. The popup now treats the initial miss as a transient `Recovering detector…` state and polls the current tab for recovery.
+
+If the detector responds during that bounded follow-up period, the popup refreshes the current-tab state and clears the warning automatically. Red `Detector unavailable` is reserved for a persistent background recovery failure after repeated unsuccessful checks.
+
+This fixes the misleading situation where a monitored row already showed `Idle` while a stale red `Chat detector recovery failed` message remained visible.
