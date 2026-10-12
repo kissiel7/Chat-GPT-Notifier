@@ -5,15 +5,8 @@ const $ = (id) => document.getElementById(id);
 const POPUP_MESSAGE_TIMEOUT_MS = 1800;
 const RECOVERY_POLL_INTERVAL_MS = 700;
 const RECOVERY_POLL_ATTEMPTS = 8;
-const PANEL_PARAMS = new URLSearchParams(location.search);
-const PANEL_MODE = PANEL_PARAMS.get('panel') === '1';
-const PANEL_ORIGIN_TAB_ID = Number(PANEL_PARAMS.get('tabId'));
-const PANEL_EDGE_MARGIN = 20;
-const PANEL_INNER_WIDTH = 500;
 
 let dashboardLoadInFlight = false;
-let panelResizeTimer = null;
-let lastPanelGeometry = null;
 let currentRecoveryGeneration = 0;
 
 let current = {
@@ -34,67 +27,6 @@ function normalize(value) {
     .trim();
 }
 
-if (PANEL_MODE) {
-  document.documentElement.classList.add('panel-window');
-}
-
-async function resolveContextTab() {
-  if (PANEL_MODE && Number.isFinite(PANEL_ORIGIN_TAB_ID)) {
-    try {
-      return await chrome.tabs.get(PANEL_ORIGIN_TAB_ID);
-    } catch (_) {
-      // The origin tab may have been closed after the panel opened.
-    }
-  }
-
-  const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-  return tabs[0] || null;
-}
-
-async function resizeAdaptivePanel() {
-  if (!PANEL_MODE) return;
-
-  try {
-    const currentWindow = await chrome.windows.getCurrent();
-    if (currentWindow?.id == null) return;
-
-    const chromeWidth = Math.max(0, window.outerWidth - window.innerWidth);
-    const chromeHeight = Math.max(0, window.outerHeight - window.innerHeight);
-    const desiredInnerHeight = Math.ceil(document.documentElement.scrollHeight + 2);
-    const maxOuterHeight = Math.max(420, screen.availHeight - (PANEL_EDGE_MARGIN * 2));
-    const maxOuterWidth = Math.max(420, screen.availWidth - (PANEL_EDGE_MARGIN * 2));
-    const targetWidth = Math.min(PANEL_INNER_WIDTH + chromeWidth, maxOuterWidth);
-    const targetHeight = Math.min(desiredInnerHeight + chromeHeight, maxOuterHeight);
-    const targetLeft = Math.max(
-      screen.availLeft,
-      screen.availLeft + screen.availWidth - targetWidth - PANEL_EDGE_MARGIN
-    );
-    const targetTop = screen.availTop + PANEL_EDGE_MARGIN;
-
-    const geometry = [targetLeft, targetTop, targetWidth, targetHeight].join(':');
-    if (geometry === lastPanelGeometry) return;
-    lastPanelGeometry = geometry;
-
-    await chrome.windows.update(currentWindow.id, {
-      left: Math.round(targetLeft),
-      top: Math.round(targetTop),
-      width: Math.round(targetWidth),
-      height: Math.round(targetHeight)
-    });
-  } catch (_) {
-    // Window sizing is best-effort; the notifier remains usable without it.
-  }
-}
-
-function schedulePanelResize() {
-  if (!PANEL_MODE) return;
-  if (panelResizeTimer) clearTimeout(panelResizeTimer);
-  panelResizeTimer = setTimeout(() => {
-    panelResizeTimer = null;
-    void resizeAdaptivePanel();
-  }, 60);
-}
-
 function exactRegexRule(title) {
   const escaped = normalize(title)
     .replace(/[.*+?^\${}()|[\]\\]/g, '\\$&')
@@ -106,7 +38,6 @@ function showActionStatus(text, isError = false) {
   const element = $('actionStatus');
   element.textContent = text || '';
   element.className = isError ? 'status error' : 'status';
-  schedulePanelResize();
 }
 
 async function withTimeout(promise, timeoutMs, fallbackValue = null) {
@@ -212,7 +143,6 @@ function renderMonitoredTabs(result) {
     empty.className = 'empty';
     empty.textContent = 'No monitored ChatGPT tabs are open.';
     list.appendChild(empty);
-    schedulePanelResize();
     return;
   }
 
@@ -252,7 +182,7 @@ function renderMonitoredTabs(result) {
       try {
         const response = await chrome.runtime.sendMessage({ type: 'FOCUS_TAB', tabId: tab.tabId });
         if (!response?.ok) throw new Error(response?.error || 'Could not focus tab');
-        if (!PANEL_MODE) window.close();
+        window.close();
       } catch (error) {
         showActionStatus(String(error?.message || error), true);
       }
@@ -260,7 +190,6 @@ function renderMonitoredTabs(result) {
 
     list.appendChild(button);
   }
-  schedulePanelResize();
 }
 
 async function loadMonitoredTabs() {
@@ -416,7 +345,8 @@ async function load() {
   await renderDeploymentState();
 
   try {
-    const tab = await resolveContextTab();
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    const tab = tabs[0] || null;
     const isChatGpt = Boolean(tab && /^https:\/\/(chatgpt\.com|chat\.openai\.com)\//i.test(tab.url || ''));
 
     current = {
@@ -616,17 +546,8 @@ $('options').addEventListener('click', () => {
   void chrome.runtime.openOptionsPage();
 });
 
-void load().finally(() => schedulePanelResize());
-
-if (PANEL_MODE) {
-  const main = document.querySelector('main');
-  if (main && typeof ResizeObserver === 'function') {
-    new ResizeObserver(() => schedulePanelResize()).observe(main);
-  }
-  document.querySelector('details')?.addEventListener('toggle', () => schedulePanelResize());
-  window.addEventListener('resize', () => schedulePanelResize());
-}
+void load();
 
 setInterval(() => {
-  void loadMonitoredTabs().finally(() => schedulePanelResize());
+  void loadMonitoredTabs();
 }, 2000);
