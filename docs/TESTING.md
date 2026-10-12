@@ -150,3 +150,17 @@ Run these tests in Brave after every detector change.
 | Content exceeds available screen height | Window stops near screen height and page scrolling becomes available |
 | Click monitored-chat row | ChatGPT tab/window is focused; notifier window remains open |
 | Deployment diagnostic | `Deployment: OK · 0.1.14` |
+
+
+## v0.1.15 native popup sizing
+
+| Scenario | Expected result |
+|---|---|
+| Click toolbar icon | Native anchored Chromium popup opens |
+| Few monitored chats | Popup height fits the content; no unnecessary scrollbar |
+| More monitored chats | Popup grows vertically with the list |
+| Content remains below Chromium popup limit | Entire popup content is visible without scrolling |
+| Content exceeds Chromium popup limit | Popup stops growing and one normal popup scrollbar is used |
+| Monitored-tabs list | No separate internal 210 px scrollbar |
+| Popup remains open while state rows update | No wobbling/shaking from explicit window resizing |
+| Deployment diagnostic | `Deployment: OK · 0.1.15` |
