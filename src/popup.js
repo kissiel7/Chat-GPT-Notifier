@@ -3,8 +3,11 @@
 const $ = (id) => document.getElementById(id);
 
 const POPUP_MESSAGE_TIMEOUT_MS = 1800;
+const RECOVERY_POLL_INTERVAL_MS = 700;
+const RECOVERY_POLL_ATTEMPTS = 8;
 
 let dashboardLoadInFlight = false;
+let currentRecoveryGeneration = 0;
 
 let current = {
   tab: null,
@@ -49,6 +52,16 @@ async function withTimeout(promise, timeoutMs, fallbackValue = null) {
   } finally {
     if (timer) clearTimeout(timer);
   }
+}
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isPersistentDetectorFailure(status) {
+  if (status?.state !== 'unavailable') return false;
+  return status?.lastEvent === 'detector-recovery-failed'
+    || status?.lastEvent === 'detector-recovery-no-response';
 }
 
 function renderScopeButton() {
@@ -230,15 +243,23 @@ async function renderDeploymentState() {
   }
 }
 
-async function getContentStatus(tabId) {
+async function getDirectContentStatus(tabId) {
   try {
-    const direct = await withTimeout(
+    return await withTimeout(
       chrome.tabs.sendMessage(tabId, { type: 'GET_CONTENT_STATUS' }),
       700,
       null
     );
-    if (direct) return direct;
+  } catch (_) {
+    return null;
+  }
+}
 
+async function getContentStatus(tabId) {
+  const direct = await getDirectContentStatus(tabId);
+  if (direct) return direct;
+
+  try {
     const recovery = await withTimeout(
       chrome.runtime.sendMessage({ type: 'ENSURE_CONTENT_DETECTOR', tabId }),
       POPUP_MESSAGE_TIMEOUT_MS,
@@ -263,7 +284,64 @@ async function getBackgroundStatus(tab, contentStatus) {
   }
 }
 
+function applyCurrentTabStatus(tab, contentStatus, status) {
+  current.status = status;
+
+  const title = normalize(contentStatus?.title || status?.title || tab.title || 'ChatGPT');
+  current.title = title;
+  current.inScope = Boolean(status?.inScope);
+  current.matchedRule = status?.matchedRule || null;
+  current.exactRule = exactRegexRule(title);
+
+  $('title').textContent = title;
+  $('scope').textContent = current.inScope ? 'Yes' : 'No';
+  $('scope').className = current.inScope ? 'good' : 'bad';
+  $('matchedRule').textContent = current.matchedRule || '—';
+  $('titleSource').textContent = contentStatus?.titleSource || status?.titleSource || (contentStatus ? 'content-script' : 'browser-tab');
+  $('state').textContent = contentStatus?.state || status?.state || 'idle';
+  $('event').textContent = contentStatus?.lastEvent || status?.lastEvent || '—';
+  $('composer').textContent = contentStatus?.composerRole || '—';
+  $('stopSeen').textContent = contentStatus?.stopSeen ? 'Yes' : (contentStatus?.cycleId ? 'No' : '—');
+  $('delivery').textContent = contentStatus?.lastDelivery || '—';
+
+  renderNotificationState(status);
+  renderScopeButton();
+}
+
+async function followCurrentTabRecovery(tab, generation) {
+  for (let attempt = 0; attempt < RECOVERY_POLL_ATTEMPTS; attempt += 1) {
+    await delay(RECOVERY_POLL_INTERVAL_MS);
+    if (generation !== currentRecoveryGeneration || current.tab?.id !== tab.id) return;
+
+    const contentStatus = await getDirectContentStatus(tab.id);
+    const status = await getBackgroundStatus(tab, contentStatus);
+
+    if (contentStatus) {
+      applyCurrentTabStatus(tab, contentStatus, status);
+      showActionStatus('');
+      return;
+    }
+
+    if (isPersistentDetectorFailure(status) && attempt >= 2) {
+      showActionStatus('Detector unavailable. Automatic recovery failed; a manual page refresh may be required.', true);
+      return;
+    }
+
+    showActionStatus('Recovering detector…');
+  }
+
+  if (generation !== currentRecoveryGeneration || current.tab?.id !== tab.id) return;
+  const status = await getBackgroundStatus(tab, null);
+  if (isPersistentDetectorFailure(status)) {
+    showActionStatus('Detector unavailable. Automatic recovery failed; a manual page refresh may be required.', true);
+  } else {
+    showActionStatus('Detector recovery is still in progress…');
+  }
+}
+
 async function load() {
+  currentRecoveryGeneration += 1;
+  const recoveryGeneration = currentRecoveryGeneration;
   await renderDeploymentState();
 
   try {
@@ -305,31 +383,17 @@ async function load() {
 
     const contentStatus = await getContentStatus(tab.id);
     const status = await getBackgroundStatus(tab, contentStatus);
-    current.status = status;
-
-    const title = normalize(contentStatus?.title || status?.title || tab.title || 'ChatGPT');
-    current.title = title;
-    current.inScope = Boolean(status?.inScope);
-    current.matchedRule = status?.matchedRule || null;
-    current.exactRule = exactRegexRule(title);
-
-    $('title').textContent = title;
-    $('scope').textContent = current.inScope ? 'Yes' : 'No';
-    $('scope').className = current.inScope ? 'good' : 'bad';
-    $('matchedRule').textContent = current.matchedRule || '—';
-    $('titleSource').textContent = contentStatus?.titleSource || status?.titleSource || (contentStatus ? 'content-script' : 'browser-tab');
-    $('state').textContent = contentStatus?.state || status?.state || 'idle';
-    $('event').textContent = contentStatus?.lastEvent || status?.lastEvent || '—';
-    $('composer').textContent = contentStatus?.composerRole || '—';
-    $('stopSeen').textContent = contentStatus?.stopSeen ? 'Yes' : (contentStatus?.cycleId ? 'No' : '—');
-    $('delivery').textContent = contentStatus?.lastDelivery || '—';
-
-    renderNotificationState(status);
-    renderScopeButton();
+    applyCurrentTabStatus(tab, contentStatus, status);
     await loadMonitoredTabs();
 
-    if (!contentStatus) {
-      showActionStatus('Chat detector recovery failed. A manual page refresh remains available as a fallback.', true);
+    if (contentStatus) {
+      showActionStatus('');
+    } else if (isPersistentDetectorFailure(status)) {
+      showActionStatus('Recovering detector…');
+      void followCurrentTabRecovery(tab, recoveryGeneration);
+    } else {
+      showActionStatus('Recovering detector…');
+      void followCurrentTabRecovery(tab, recoveryGeneration);
     }
   } catch (error) {
     showActionStatus('Popup error: ' + String(error?.message || error), true);
