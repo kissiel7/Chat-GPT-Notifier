@@ -4,7 +4,7 @@ A small Chromium Manifest V3 extension that notifies you when selected ChatGPT c
 
 ## Current scope
 
-Version `0.1.13` monitors ChatGPT tabs and notifies only when the conversation title matches configured rules. The initial rules are:
+Version `0.1.14` monitors ChatGPT tabs and notifies only when the conversation title matches configured rules. The initial rules are:
 
 - `/^Finanzblick\s+\d+$/i`
 - `/^Documents Storage\s+\d+$/i`
@@ -184,3 +184,19 @@ A short detector probe timeout is no longer shown immediately as a red recovery 
 If the detector responds during that bounded follow-up period, the popup refreshes the current-tab state and clears the warning automatically. Red `Detector unavailable` is reserved for a persistent background recovery failure after repeated unsuccessful checks.
 
 This fixes the misleading situation where a monitored row already showed `Idle` while a stale red `Chat detector recovery failed` message remained visible.
+
+
+## v0.1.14 adaptive toolbar window
+
+Chromium toolbar action popups are hard-limited to 800×600 px, so they cannot grow to the full available desktop height. v0.1.14 therefore removes the fixed action popup and opens the notifier UI in a dedicated extension popup window when the toolbar icon is clicked.
+
+The dedicated window:
+- reuses the same notifier UI;
+- opens for the ChatGPT tab from which the toolbar icon was clicked;
+- automatically grows/shrinks with its content;
+- expands up to the current screen's available height before the page itself becomes scrollable;
+- removes the 210 px monitored-tabs list cap in window mode so the whole list contributes to window growth;
+- reuses an existing notifier window instead of opening duplicates;
+- keeps the panel open when a monitored-chat row is clicked, while focusing the selected ChatGPT tab.
+
+The notification detector and delivery logic are unchanged.
