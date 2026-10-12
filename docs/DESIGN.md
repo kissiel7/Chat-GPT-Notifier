@@ -126,3 +126,10 @@ When a content script initializes and sees the composer already in the Stop/gene
 The popup dashboard must not make detector recovery part of its critical rendering path for every ChatGPT tab. It first identifies tabs whose stored/browser title matches a configured monitoring rule, then performs bounded status probes only for those monitored candidates.
 
 If a monitored probe does not answer quickly, the dashboard uses the last background runtime state for display and starts recovery asynchronously. Popup refreshes are serialized so only one dashboard request can be active at a time. This prevents a slow detector from causing UI flapping or recovery storms.
+
+
+## Recovery-status presentation
+
+The popup distinguishes transport timing from actual detector failure. A missed direct probe or a popup-level recovery timeout is treated as transient and rendered neutrally as `Recovering detector…`. The popup continues bounded direct-status polling while background recovery proceeds.
+
+A red unavailable state is only shown when the background runtime reports a persistent recovery failure (`detector-recovery-failed` or `detector-recovery-no-response`) after repeated unsuccessful checks. Any subsequent live content status immediately clears the warning and refreshes the current-tab controls.
