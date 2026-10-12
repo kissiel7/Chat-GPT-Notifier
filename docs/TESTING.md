@@ -124,3 +124,15 @@ Run these tests in Brave after every detector change.
 | Content title changes from fallback `ChatGPT` to the real conversation name | Background runtime title is updated automatically |
 | Dashboard candidate has stale cached fallback but current browser title is specific | Current specific title is used for scope matching |
 | Deployment diagnostic | `Deployment: OK · 0.1.12` |
+
+
+## v0.1.13 recovery-status UI
+
+| Scenario | Expected result |
+|---|---|
+| Current-tab detector misses the first quick probe | Neutral `Recovering detector…`, no red error |
+| Detector answers shortly afterward | Warning clears automatically and current-tab state refreshes |
+| Dashboard already shows current tab `Idle` after recovery | No stale red recovery-failed message remains |
+| Recovery repeatedly fails and background reports unavailable | Red `Detector unavailable` message appears |
+| Persistent failure later recovers while popup remains open | Live status clears the recovery warning |
+| Deployment diagnostic | `Deployment: OK · 0.1.13` |
