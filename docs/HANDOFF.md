@@ -2,7 +2,7 @@
 
 ## Current release
 
-`0.1.14` adaptive toolbar window sizing.
+`0.1.15` browser-managed dynamic action-popup sizing.
 
 ## Source of truth
 
@@ -243,3 +243,23 @@ Behavior:
 - monitored-tab list has no independent 210 px scroll cap in panel mode;
 - selecting a monitored tab focuses that browser tab without closing the notifier window;
 - detector/notification semantics are unchanged.
+
+
+## v0.1.15
+
+The dedicated notifier window from v0.1.14 was rejected because repeated explicit resizing produced wobbling/shaking.
+
+Reverted:
+- removed dedicated `chrome.windows.create` notifier panel;
+- removed panel reuse/positioning logic;
+- removed `ResizeObserver`-driven `chrome.windows.update` sizing;
+- restored `action.default_popup = src/popup.html`.
+
+New sizing behavior:
+- native toolbar popup grows according to content;
+- monitored-tabs list no longer has its own 210 px scroll area;
+- no explicit popup height is set;
+- once Chromium reaches its native popup-height cap, the popup body scrolls;
+- selecting a monitored tab again follows normal toolbar-popup behavior and closes the popup.
+
+Detector/recovery/notification semantics are unchanged.
