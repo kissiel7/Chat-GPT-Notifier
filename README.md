@@ -4,7 +4,7 @@ A small Chromium Manifest V3 extension that notifies you when selected ChatGPT c
 
 ## Current scope
 
-Version `0.1.14` monitors ChatGPT tabs and notifies only when the conversation title matches configured rules. The initial rules are:
+Version `0.1.15` monitors ChatGPT tabs and notifies only when the conversation title matches configured rules. The initial rules are:
 
 - `/^Finanzblick\s+\d+$/i`
 - `/^Documents Storage\s+\d+$/i`
@@ -200,3 +200,12 @@ The dedicated window:
 - keeps the panel open when a monitored-chat row is clicked, while focusing the selected ChatGPT tab.
 
 The notification detector and delivery logic are unchanged.
+
+
+## v0.1.15 browser-managed dynamic popup sizing
+
+The dedicated extension window introduced in v0.1.14 was reverted because continuous explicit window resizing caused visible wobbling/shaking.
+
+The toolbar icon again uses Chromium's native action popup. The popup has no fixed height and the monitored-tabs list no longer has its own 210 px height cap. Chromium is allowed to grow the popup naturally with the document until the browser's action-popup size limit is reached. Beyond that limit, the popup body scrolls normally.
+
+This keeps the original anchored-toolbar interaction while maximizing visible content before any scrolling is required. Detector and notification logic are unchanged.
