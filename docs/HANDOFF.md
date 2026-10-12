@@ -2,7 +2,7 @@
 
 ## Current release
 
-`0.1.13` recovery-status UI and automatic warning clearance.
+`0.1.14` adaptive toolbar window sizing.
 
 ## Source of truth
 
@@ -226,3 +226,20 @@ Fix:
 - red `Detector unavailable` is shown only after repeated failed checks plus a persistent background recovery-failure state;
 - manual refresh is mentioned only for a genuine persistent failure;
 - completion and notification semantics are unchanged.
+
+
+## v0.1.14
+
+The user requested that the notifier UI expand vertically with its content and only require scrolling once it reaches the available screen height.
+
+Because Chromium action popups are capped at 800×600 px, the default `action.default_popup` was removed. Clicking the extension toolbar icon now opens/reuses a dedicated extension popup window.
+
+Behavior:
+- origin ChatGPT tab ID is passed to the panel URL;
+- current-tab controls remain bound to that originating tab;
+- window width is approximately 500 px of content;
+- height tracks content dynamically and is capped at available screen height minus 40 px;
+- the panel is positioned near the top-right of the current screen;
+- monitored-tab list has no independent 210 px scroll cap in panel mode;
+- selecting a monitored tab focuses that browser tab without closing the notifier window;
+- detector/notification semantics are unchanged.
