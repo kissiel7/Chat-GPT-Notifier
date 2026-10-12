@@ -2,7 +2,7 @@
 
 ## Current release
 
-`0.1.12` current-chat title freshness and scope controls.
+`0.1.13` recovery-status UI and automatic warning clearance.
 
 ## Source of truth
 
@@ -213,3 +213,16 @@ Fix:
 - dashboard/recovery candidate selection prefers a current specific browser title over stale fallback state.
 
 Expected result: **Monitor this chat** is available for a named out-of-scope conversation immediately after its title becomes available, without requiring a page refresh.
+
+
+## v0.1.13
+
+The popup could show a red `Chat detector recovery failed` message even while the same current tab was already displayed as `Idle` in the monitored-tabs dashboard. This was a popup race: the initial current-tab request timed out, while detector recovery completed shortly afterward.
+
+Fix:
+- initial detector miss is neutral `Recovering detector…`, not an error;
+- popup polls the current tab for a bounded recovery period;
+- a successful live status refreshes title/scope/state and clears the message immediately;
+- red `Detector unavailable` is shown only after repeated failed checks plus a persistent background recovery-failure state;
+- manual refresh is mentioned only for a genuine persistent failure;
+- completion and notification semantics are unchanged.
