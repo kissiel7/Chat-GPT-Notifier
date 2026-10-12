@@ -37,3 +37,20 @@ summary { cursor: pointer; font-weight: 600; }
 
 .diagnostics-actions { margin-top: 8px; }
 .diagnostics-actions button { margin-top: 0; }
+
+
+html.panel-window,
+html.panel-window body {
+  width: 500px;
+  min-width: 0;
+  max-width: 500px;
+}
+
+html.panel-window body {
+  overflow-y: auto;
+}
+
+html.panel-window .chat-list {
+  max-height: none;
+  overflow: visible;
+}
