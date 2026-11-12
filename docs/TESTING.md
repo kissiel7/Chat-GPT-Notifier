@@ -164,3 +164,15 @@ Run these tests in Brave after every detector change.
 | Monitored-tabs list | No separate internal 210 px scrollbar |
 | Popup remains open while state rows update | No wobbling/shaking from explicit window resizing |
 | Deployment diagnostic | `Deployment: OK · 0.1.15` |
+
+
+## v0.1.16 generation-state checks
+
+| Scenario | Expected result |
+|---|---|
+| Monitored response is actively streaming | Row shows **Generating** and contributes to running count |
+| Stop control disappears at end of generation | Row leaves **Generating** on the next immediate/popup status evaluation |
+| Stability window after generation | Row shows **Finishing…** rather than **Generating** |
+| Hidden/stale Stop-like element remains elsewhere in DOM | It does not keep the detector active |
+| Background tab finishes while popup is closed | Opening popup forces fresh evaluation and shows current state |
+| Deployment diagnostic | `Deployment: OK · 0.1.16` |
