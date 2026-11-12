@@ -122,6 +122,7 @@ function monitoredStateLabel(tab) {
     return 'detector unavailable — recovery failed';
   }
   if (tab.running) return 'generating';
+  if (tab.state === 'verifying') return 'finishing…';
   if (tab.state === 'completed') return 'completed';
   if (tab.state === 'manual_stop') return 'stopped';
   if (tab.state === 'error') return 'error';
@@ -158,7 +159,7 @@ function renderMonitoredTabs(result) {
       ? '↻'
       : (tab.detectorAvailable === false
         ? '!'
-        : (tab.running ? '●' : (tab.state === 'completed' ? '✓' : '○')));
+        : (tab.running ? '●' : (tab.state === 'verifying' ? '◐' : (tab.state === 'completed' ? '✓' : '○'))));
 
     const copy = document.createElement('span');
     copy.className = 'chat-copy';
