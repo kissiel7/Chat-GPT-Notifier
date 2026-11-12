@@ -151,3 +151,14 @@ v0.1.15 returns to `action.default_popup` and removes all explicit `chrome.windo
 The popup document has no fixed vertical size and the monitored-tab list has no independent vertical cap. Browser layout therefore determines popup height from the current content. Once Chromium reaches its built-in action-popup maximum, normal document scrolling handles the remaining content.
 
 This avoids feedback between `ResizeObserver`, window chrome dimensions, and `chrome.windows.update`, which caused the dedicated-window UI to visibly oscillate.
+
+
+## Generation-state reconciliation
+
+v0.1.16 narrows generation-control detection to rendered controls owned by the current ChatGPT composer. Hidden, disabled, aria-hidden, display-none, visibility-hidden and zero-layout controls do not count as live Send/Stop controls.
+
+Fallback text scoring for Stop is restricted to the composer form. This prevents unrelated or stale Stop-like DOM elements elsewhere on the page from keeping a cycle in `active`.
+
+`GET_CONTENT_STATUS` now runs one immediate detector evaluation before returning state. UI polling therefore reconciles stale background-tab state against the current DOM.
+
+For user-facing status, only `active` means **Generating**. The detector's stability-check phase `verifying` is presented as **Finishing…** and does not count toward the running badge.
