@@ -2,7 +2,7 @@
 
 ## Current release
 
-`0.1.15` browser-managed dynamic action-popup sizing.
+`0.1.16` stale generation-state reconciliation.
 
 ## Source of truth
 
@@ -263,3 +263,18 @@ New sizing behavior:
 - selecting a monitored tab again follows normal toolbar-popup behavior and closes the popup.
 
 Detector/recovery/notification semantics are unchanged.
+
+
+## v0.1.16
+
+A live case showed `Saldo Atlas 06` as **Generating** after the ChatGPT response had already stopped.
+
+Fix:
+- Stop detection is scoped to the composer and only accepts rendered controls;
+- fallback Stop text matching no longer scans the full document;
+- status requests force an immediate DOM evaluation;
+- mutation observation includes visibility-related attributes;
+- `verifying` is shown as **Finishing…**, not **Generating**;
+- only `active` contributes to dashboard running count and action badge.
+
+Expected result: when ChatGPT's Stop control disappears, the dashboard leaves **Generating** immediately, normally shows **Finishing…** for the stability window, then **Completed/Idle**.
