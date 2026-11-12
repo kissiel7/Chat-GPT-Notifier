@@ -4,7 +4,7 @@ A small Chromium Manifest V3 extension that notifies you when selected ChatGPT c
 
 ## Current scope
 
-Version `0.1.15` monitors ChatGPT tabs and notifies only when the conversation title matches configured rules. The initial rules are:
+Version `0.1.16` monitors ChatGPT tabs and notifies only when the conversation title matches configured rules. The initial rules are:
 
 - `/^Finanzblick\s+\d+$/i`
 - `/^Documents Storage\s+\d+$/i`
@@ -209,3 +209,15 @@ The dedicated extension window introduced in v0.1.14 was reverted because contin
 The toolbar icon again uses Chromium's native action popup. The popup has no fixed height and the monitored-tabs list no longer has its own 210 px height cap. Chromium is allowed to grow the popup naturally with the document until the browser's action-popup size limit is reached. Beyond that limit, the popup body scrolls normally.
 
 This keeps the original anchored-toolbar interaction while maximizing visible content before any scrolling is required. Detector and notification logic are unchanged.
+
+
+## v0.1.16 stale generating-state fix
+
+The dashboard could remain on **Generating** after ChatGPT had already stopped. Two causes were addressed:
+
+- Stop-control detection is now scoped to the live ChatGPT composer and ignores hidden/disabled/non-rendered controls instead of scanning the whole page for any Stop-like element.
+- A popup status request forces an immediate detector evaluation before reporting state, so a background tab does not have to wait for the normal polling interval to reconcile.
+
+The dashboard now also distinguishes the detector's short post-generation stability phase as **Finishing…** rather than **Generating**. Only the true `active` state contributes to the running count and toolbar badge.
+
+Completion notification semantics are otherwise unchanged.
