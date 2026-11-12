@@ -111,6 +111,27 @@
     ].filter(Boolean).join(' ')).toLowerCase();
   }
 
+  function isRenderedControl(element) {
+    if (!(element instanceof Element) || !element.isConnected) return false;
+    if (element.hidden || element.getAttribute('aria-hidden') === 'true') return false;
+    if (element instanceof HTMLButtonElement && element.disabled) return false;
+
+    const style = getComputedStyle(element);
+    if (style.display === 'none' || style.visibility === 'hidden' || style.visibility === 'collapse') return false;
+    if (Number.parseFloat(style.opacity || '1') <= 0) return false;
+
+    return element.getClientRects().length > 0;
+  }
+
+  function composerForm(root = document) {
+    const explicit = root.querySelector?.('form[data-chatgpt-composer]');
+    if (explicit) return explicit;
+
+    const prompt = root.querySelector?.('#prompt-textarea, [contenteditable="true"][role="textbox"]');
+    const form = prompt?.closest?.('form');
+    return form || null;
+  }
+
   function scoreStopButton(element) {
     const signal = elementSignalText(element);
     const testId = normalize(element.getAttribute('data-testid')).toLowerCase();
@@ -126,13 +147,20 @@
   }
 
   function findStopButton(root = document) {
-    // Prefer stable test-id signals when ChatGPT exposes them.
-    const direct = root.querySelector(
-      'button[data-testid="stop-button"], button[data-testid="composer-stop-button"], button[data-testid*="stop"], [role="button"][data-testid*="stop"]'
-    );
-    if (direct) return direct;
+    const form = composerForm(root);
+    const scope = form || root;
 
-    const candidates = Array.from(root.querySelectorAll('button, [role="button"]'));
+    const directCandidates = Array.from(scope.querySelectorAll(
+      'button[data-testid="stop-button"], button[data-testid="composer-stop-button"], [role="button"][data-testid="stop-button"], [role="button"][data-testid="composer-stop-button"]'
+    )).filter(isRenderedControl);
+
+    if (directCandidates.length) return directCandidates[0];
+
+    // Fallback text/test-id scoring is intentionally restricted to the composer.
+    if (!form) return null;
+
+    const candidates = Array.from(form.querySelectorAll('button, [role="button"]'))
+      .filter(isRenderedControl);
     let best = null;
 
     for (const element of candidates) {
@@ -145,13 +173,18 @@
   }
 
   function findSendButton(root = document) {
-    return root.querySelector(
+    const form = composerForm(root);
+    const scope = form || root;
+    const candidates = Array.from(scope.querySelectorAll(
       '#composer-submit-button[data-testid="send-button"], button[data-testid="send-button"], [role="button"][data-testid="send-button"]'
-    );
+    ));
+    return candidates.find(isRenderedControl) || null;
   }
 
   function composerRole(root = document) {
-    const control = root.querySelector('#composer-submit-button')
+    const form = composerForm(root);
+    const primary = form?.querySelector('#composer-submit-button');
+    const control = (primary && isRenderedControl(primary) ? primary : null)
       || findStopButton(root)
       || findSendButton(root);
     if (!control) return 'missing';
@@ -596,7 +629,7 @@
     childList: true,
     characterData: true,
     attributes: true,
-    attributeFilter: ['aria-label', 'data-testid', 'title']
+    attributeFilter: ['aria-label', 'aria-hidden', 'data-testid', 'title', 'class', 'style', 'hidden', 'disabled']
   });
 
   setInterval(evaluate, POLL_MS);
@@ -618,6 +651,7 @@
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (message?.type === 'GET_CONTENT_STATUS') {
+      evaluate();
       const snapshot = inspect();
       sendResponse({
         instanceToken,
