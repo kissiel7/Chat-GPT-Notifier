@@ -19,7 +19,7 @@ const MAX_LOGS = 300;
 const RUNTIME_STATES_KEY = 'runtimeStates';
 const NOTIFICATION_TARGETS_KEY = 'notificationTargets';
 const RECENT_COMPLETIONS_KEY = 'recentCompletions';
-const RUNNING_STATES = new Set(['active', 'verifying']);
+const RUNNING_STATES = new Set(['active']);
 const CONTENT_STATUS_TIMEOUT_MS = 650;
 
 let runtimeStates = {};
